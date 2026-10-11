@@ -1,0 +1,16 @@
+#!/bin/bash
+# Snapshot Omarchy's shell environment into the dotfiles source so devpods
+# (no Omarchy installed) get the same bash setup. Run on the Omarchy host
+# after `omarchy update`, review `git diff`, commit.
+set -euo pipefail
+
+src_root="${OMARCHY_PATH:-/usr/share/omarchy}"
+dst_root="$(chezmoi source-path)"
+
+rm -rf "$dst_root/dot_local/share/omarchy/default/bash"
+mkdir -p "$dst_root/dot_local/share/omarchy/default"
+cp -r "$src_root/default/bash" "$dst_root/dot_local/share/omarchy/default/bash"
+
+cp "$src_root/config/starship.toml" "$dst_root/dot_config/starship.toml"
+
+echo "Synced from $src_root ($(omarchy version 2>/dev/null || echo unknown version))"

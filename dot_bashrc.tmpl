@@ -1,0 +1,39 @@
+{{- if .omarchy -}}
+# Omarchy environment (OMARCHY_PATH + PATH), needed even for non-interactive shells
+[[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap
+{{- else -}}
+# Devpod/container: no Omarchy installed, use the snapshot shipped in dotfiles
+# (refresh it on the host with scripts/sync-omarchy).
+export OMARCHY_PATH="$HOME/.local/share/omarchy"
+export EDITOR="${EDITOR:-nvim}"
+# Mirror Omarchy's env-bootstrap: mise shims + ~/.local/bin on PATH before the
+# rc chain, so its `command -v eza/zoxide/...` checks see mise-installed tools.
+case ":$PATH:" in *":$HOME/.local/share/mise/shims:"*) ;; *) PATH="${PATH:+$PATH:}$HOME/.local/share/mise/shims" ;; esac
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) PATH="${PATH:+$PATH:}$HOME/.local/bin" ;; esac
+export PATH
+{{- end }}
+
+# If not running interactively, don't do anything else (leave this above the rc source)
+[[ $- != *i* ]] && return
+
+# All the default Omarchy aliases and functions
+# (don't mess with these directly, just overwrite them here!)
+source "$OMARCHY_PATH/default/bash/rc"
+
+# Add your own exports, aliases, and functions here.
+#
+# Make an alias for invoking commands you use constantly
+# alias p='python'
+{{- if .omarchy }}
+
+# WireGuard tunnel "YaYa Tech" via NetworkManager
+alias vup='nmcli connection up "YaYa Tech"'
+alias vdown='nmcli connection down "YaYa Tech"'
+
+# OpenSSH agent (systemd user ssh-agent.socket); fallback until env is set at login
+[[ -z $SSH_AUTH_SOCK ]] && export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+{{- else }}
+
+# fzf from mise has no /usr/share/fzf files; load its bash integration directly
+command -v fzf &>/dev/null && eval "$(fzf --bash)"
+{{- end }}

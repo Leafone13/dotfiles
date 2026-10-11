@@ -1,0 +1,4 @@
+# Layout switching is done by Hyprland (input.lua: grp:alts_toggle, Alt+AltGr).
+# fcitx5 here only serves XCompose sequences, so no trigger keys.
+[Hotkey/TriggerKeys]
+

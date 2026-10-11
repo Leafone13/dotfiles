@@ -1,0 +1,46 @@
+#!/bin/bash
+# Devpod entry point. DevPod clones this repo (e.g. to ~/dotfiles) and runs
+# this script inside the container. On an Omarchy host use instead:
+#   chezmoi init --apply Leafone13
+set -euo pipefail
+
+dotfiles_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run as root directly, otherwise through sudo when it exists.
+as_root() {
+  if [[ $EUID -eq 0 ]]; then "$@"
+  elif command -v sudo >/dev/null; then sudo "$@"
+  else echo "skip (no root/sudo): $*" >&2; return 1
+  fi
+}
+
+# 1. System layer: what servers have, stock, from the distro.
+#    vim provides vi; ncurses-term has terminfo for foot/tmux-256color.
+packages=(vim tmux git curl ca-certificates less openssh-client ncurses-term)
+if command -v apt-get >/dev/null; then
+  # devcontainer images ship a dead yarn repo that breaks apt-get update
+  as_root rm -f /etc/apt/sources.list.d/yarn.list || true
+  as_root env DEBIAN_FRONTEND=noninteractive apt-get update -qq || echo "apt-get update failed" >&2
+  as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${packages[@]}" \
+    || echo "apt-get install failed: ${packages[*]}" >&2
+else
+  echo "No apt-get: install manually: ${packages[*]}" >&2
+fi
+
+# 2. Bootstrap chezmoi (the mise-managed one takes over afterwards).
+if ! command -v chezmoi >/dev/null && [[ ! -x $HOME/.local/bin/chezmoi ]]; then
+  sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+fi
+chezmoi_bin="$(command -v chezmoi || echo "$HOME/.local/bin/chezmoi")"
+
+# 3. Apply from this clone: no second clone, no SSH access to GitHub needed.
+#    Always runs, also when chezmoi was already installed.
+"$chezmoi_bin" init --apply --force --source "$dotfiles_dir"
+
+# 4. DevPod copies the host's [user] into ~/.gitconfig, which git reads after
+#    ~/.config/git/config. Re-apply the identity rules at its end so they win.
+if ! git config --file "$HOME/.gitconfig" --get-all include.path 2>/dev/null | grep -qx '~/.config/git/identity'; then
+  git config --file "$HOME/.gitconfig" --add include.path '~/.config/git/identity'
+fi
+
+echo "dotfiles: done"

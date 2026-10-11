@@ -1,0 +1,32 @@
+{{- if .omarchy -}}
+[tools]
+chezmoi = "latest"
+claude = "latest"
+codex = "latest"
+gh = "latest"
+"github:skevetter/devpod" = "latest"
+node = "26.8.2"
+{{- else -}}
+# Devpod personal layer: tools wanted in every devpod.
+# System tools that servers have (vim/vi, tmux, git, ...) come from apt in `install`;
+# project tools (kubectl, python, AI agents, ...) belong in the project's mise.toml.
+[tools]
+# Omarchy bash environment
+eza = "latest"
+fzf = "latest"
+zoxide = "latest"
+bat = "latest"
+starship = "latest"
+# Neovim / LazyVim
+neovim = "latest"
+ripgrep = "latest"
+fd = "latest"
+lazygit = "latest"
+# dotfiles
+chezmoi = "latest"
+# misc
+jq = "latest"
+{{- end }}
+
+[settings.upgrade]
+auto_prune = false

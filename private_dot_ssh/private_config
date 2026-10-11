@@ -1,0 +1,12 @@
+# Personal layer (Leafone13/dotfiles via chezmoi).
+# Other layers drop files into config.d/: work hosts (yaya), DevPod entries (devpod).
+Include config.d/*
+
+Host *
+    AddKeysToAgent yes
+
+# GitHub over SSH = serhii-yaya (personal-work); Leafone13 uses HTTPS via gh
+Host github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_github
+    IdentitiesOnly yes

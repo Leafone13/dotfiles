@@ -1,0 +1,20 @@
+#!/bin/bash
+# List open workspaces (with the apps on each) and switch to the one picked.
+# Bound to a three-finger swipe up in ~/.config/hypr/input.lua.
+
+set -euo pipefail
+
+options=$(
+  hyprctl clients -j | jq -r --argjson ws "$(hyprctl workspaces -j)" '
+    (group_by(.workspace.id) | map({key: (.[0].workspace.id | tostring), value: (map(.class) | unique | join(", "))}) | from_entries) as $apps
+    | $ws | map(select(.id > 0)) | sort_by(.id)[]
+    | "󰍹\t\(.id)\t\($apps[.id | tostring] // "пусто")"'
+)
+
+[[ -z $options ]] && exit 0
+
+mapfile -t rows <<<"$options"
+choice=$(omarchy-menu-select "Рабочий стол" "${rows[@]}" -- --width 500) || exit 0
+
+id=${choice%%$'\t'*}
+[[ $id =~ ^[0-9]+$ ]] && hyprctl dispatch workspace "$id" >/dev/null

@@ -1,0 +1,8 @@
+{{- if .container }}
+# Devpods: latest mise binary. On Omarchy mise comes from pacman (/usr/bin/mise).
+[".local/bin/mise"]
+type = "file"
+executable = true
+url = "https://mise.jdx.dev/mise-latest-{{ .chezmoi.os }}-{{ .chezmoi.arch }}"
+refreshPeriod = "168h"
+{{- end }}

@@ -1,0 +1,57 @@
+{{- if .omarchy -}}
+#!/bin/bash
+# One-time (and on change) setup of an Omarchy host: the parts that are not files.
+# Idempotent: safe to re-run. Runs after files and after mise-install.sh.
+set -uo pipefail
+
+step() { printf '\n==> %s\n' "$*"; }
+warn() { printf '   ! %s\n' "$*" >&2; }
+
+step "Packages beyond Omarchy"
+omarchy pkg add age sops tree cmake meson slack-desktop || warn "pacman packages failed"
+{{- if .work }}
+
+step "Work packages (YaYa)"
+omarchy pkg aur add anydesk-bin balena-cli-bin || warn "AUR packages failed (AUR down?)"
+{{- end }}
+
+step "ssh-agent (OpenSSH, systemd user socket)"
+systemctl --user enable --now ssh-agent.socket
+mkdir -p -m 700 "$HOME/.ssh/config.d"
+
+step "docker group (needed by DevPod)"
+if id -nG "$USER" | grep -qw docker || getent group docker | grep -qw "$USER"; then
+  echo "   already a member"
+else
+  sudo usermod -aG docker "$USER" && warn "added to docker group: log out and back in"
+fi
+
+step "voxtype (dictation)"
+# Omarchy installs it (package, service, GPU); dotfiles only keep my config.toml.
+if command -v voxtype >/dev/null; then
+  echo "   installed; after changing the model in config.toml: voxtype setup --download"
+else
+  warn "not installed: run 'omarchy voxtype install', then 'chezmoi apply' (restores my config.toml), then 'voxtype setup --download'"
+fi
+
+step "Hyprland plugin hyprexpo (hyprpm)"
+if [[ -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  warn "Hyprland not running: re-run 'chezmoi apply' from a Hyprland session"
+elif hyprpm list 2>/dev/null | grep -q hyprexpo; then
+  echo "   already installed"
+else
+  hyprpm update && yes | hyprpm add https://github.com/sandwichfarm/hyprexpo \
+    && hyprpm enable hyprexpo && hyprpm reload -n || warn "hyprexpo install failed"
+fi
+
+step "DevPod (docker provider, SSH entries in config.d, dotfiles)"
+devpod() { mise exec -- devpod "$@"; }
+devpod provider list 2>/dev/null | grep -qw docker || devpod provider add docker
+devpod provider use docker
+devpod context set-options \
+  -o SSH_CONFIG_INCLUDE_PATH="$HOME/.ssh/config.d/devpod" \
+  -o DOTFILES_URL=https://github.com/Leafone13/dotfiles.git
+
+echo
+echo "Host setup done."
+{{- end }}

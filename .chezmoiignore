@@ -1,0 +1,25 @@
+README.md
+scripts
+install
+
+{{- if not .omarchy }}
+# Omarchy host only: desktop, input, keybindings
+.config/hypr
+.config/voxtype
+.config/fcitx5
+.config/systemd
+.config/environment.d
+.config/mimeapps.list
+.config/tmux
+.XCompose
+.local/bin/workspace-picker
+.local/bin/tmux-cheatsheet
+.ssh
+{{- end }}
+
+{{- if .omarchy }}
+# Container-only: snapshots of Omarchy files (host has the real ones)
+.config/nvim/theme-fallback.lua
+.local/share/omarchy
+.config/starship.toml
+{{- end }}

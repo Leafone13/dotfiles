@@ -1,0 +1,9 @@
+# Commit identity by remote URL (default identity is [user] in config).
+# Included from ~/.config/git/config; in devpods also appended to ~/.gitconfig
+# by `install`, because DevPod copies the host's [user] into ~/.gitconfig.
+[includeIf "hasconfig:remote.*.url:https://github.com/serhii-yaya/**"]
+	path = identity-work
+[includeIf "hasconfig:remote.*.url:git@github.com:serhii-yaya/**"]
+	path = identity-work
+[includeIf "hasconfig:remote.*.url:ssh://git@github.com/serhii-yaya/**"]
+	path = identity-work

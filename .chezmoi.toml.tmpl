@@ -1,0 +1,12 @@
+{{- /* Where are we? Omarchy host vs devpod/container. */ -}}
+{{- $omarchy := stat "/usr/share/omarchy" | not | not -}}
+{{- $container := or (stat "/.dockerenv") (stat "/run/.containerenv") (env "DEVPOD") (env "REMOTE_CONTAINERS") | not | not -}}
+{{- /* Work tools (YaYa): asked once on an Omarchy host; never in devpods. */ -}}
+{{- $work := false -}}
+{{- if $omarchy -}}
+{{-   $work = promptBoolOnce . "work" "Work machine (YaYa tools: anydesk, balena-cli)" true -}}
+{{- end -}}
+[data]
+    omarchy = {{ $omarchy }}
+    container = {{ $container }}
+    work = {{ $work }}
