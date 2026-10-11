@@ -162,6 +162,17 @@ Dotfiles подтянутся сами (DevPod настроен на `Leafone13/
 
 Песочница для экспериментов уже есть: `~/Work/devpods/test`.
 
+**Рабочий проект (YaYa)** запускать в контексте `yaya`: там DevPod не пробрасывает вход от Leafone13,
+доступ к git только через ключ serhii-yaya. Контекст создаёт настройка хоста (флаг `work`).
+
+```bash
+devpod up ~/Work/devpods/my-work-project --ide none --context yaya
+devpod ssh my-work-project --context yaya
+```
+
+Правило: рабочий девпод должен работать и без моих dotfiles (у коллег их нет).
+Всё нужное для работы лежит в `.devcontainer/` и `mise.toml` проекта.
+
 ---
 
 ## Работать в девподе

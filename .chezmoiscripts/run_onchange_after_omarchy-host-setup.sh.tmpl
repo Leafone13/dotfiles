@@ -51,6 +51,21 @@ devpod provider use docker
 devpod context set-options \
   -o SSH_CONFIG_INCLUDE_PATH="$HOME/.ssh/config.d/devpod" \
   -o DOTFILES_URL=https://github.com/Leafone13/dotfiles.git
+{{- if .work }}
+
+# Work devpods: context "yaya" without DevPod's git credential injection (no Leafone13
+# access inside); git goes through the forwarded serhii-yaya SSH key.
+devpod context list --output json 2>/dev/null | jq -e 'any(.[]; .name == "yaya")' >/dev/null \
+  || devpod context create yaya
+devpod context set-options yaya \
+  -o SSH_INJECT_GIT_CREDENTIALS=false \
+  -o SSH_CONFIG_INCLUDE_PATH="$HOME/.ssh/config.d/devpod" \
+  -o DOTFILES_URL=https://github.com/Leafone13/dotfiles.git
+devpod provider list --context yaya --output json 2>/dev/null | jq -e 'has("docker")' >/dev/null \
+  || devpod provider add docker --context yaya
+devpod provider use docker --context yaya
+devpod context use default
+{{- end }}
 
 echo
 echo "Host setup done."
