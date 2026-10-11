@@ -6,6 +6,9 @@
 {{- if $omarchy -}}
 {{-   $work = promptBoolOnce . "work" "Work machine (YaYa tools: anydesk, balena-cli)" true -}}
 {{- end -}}
+{{- /* Remember where the source is: devpods apply from the DevPod clone (~/dotfiles). */}}
+sourceDir = {{ .chezmoi.sourceDir | quote }}
+
 [data]
     omarchy = {{ $omarchy }}
     container = {{ $container }}
