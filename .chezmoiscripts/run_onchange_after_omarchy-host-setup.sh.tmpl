@@ -46,7 +46,7 @@ fi
 
 step "DevPod (docker provider, SSH entries in config.d, dotfiles)"
 devpod() { mise exec -- devpod "$@"; }
-devpod provider list 2>/dev/null | grep -qw docker || devpod provider add docker
+devpod provider list --output json 2>/dev/null | jq -e 'has("docker")' >/dev/null || devpod provider add docker
 devpod provider use docker
 devpod context set-options \
   -o SSH_CONFIG_INCLUDE_PATH="$HOME/.ssh/config.d/devpod" \
