@@ -1,3 +1,6 @@
+# Timestamped backups left by in-place edits
+**/*.bak.*
+
 README.md
 scripts
 install
@@ -13,6 +16,8 @@ install
 .config/tmux
 .XCompose
 .local/bin/workspace-picker
+.local/bin/show-desktop
+.config/omarchy
 .local/bin/tmux-cheatsheet
 .ssh
 {{- end }}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.launchpad",
+  "name": "Launchpad",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Mac-style fullscreen app grid with blur, pages and search",
+  "kinds": [
+    "menu"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "menu": "Launchpad.qml"
+  }
+}

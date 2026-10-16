@@ -86,6 +86,99 @@ else
   hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/workspace-picker") end })
 end
 
+-- Mac-style four-finger pinch (thumb + three fingers), live like macOS:
+-- the Launchpad (logos.launchpad shell plugin) follows the fingers while they
+-- move, commits past ~a third, and cancels if you spread back. Spreading while
+-- it is open closes it; spreading while it is closed shows the desktop.
+-- Progress goes through a tiny file in XDG_RUNTIME_DIR that the plugin watches.
+local lp_dir = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
+local lp_gesture_file = lp_dir .. "/omarchy-launchpad-gesture"
+local lp_state_file = lp_dir .. "/omarchy-launchpad-open"
+
+local function lp_write(line)
+  local f = io.open(lp_gesture_file, "w")
+  if f then f:write(line, "\n"); f:close() end
+end
+
+local function lp_is_open()
+  local f = io.open(lp_state_file, "r")
+  if not f then return false end
+  local v = f:read("*l")
+  f:close()
+  return v == "1"
+end
+
+local function lp_clamp(v) return math.max(0, math.min(1, v)) end
+
+-- Tuned from recorded pinches on this touchpad: Hyprland starts the gesture at
+-- scale ~0.89 (its 10% dead zone), a full pinch ends around 0.3-0.65, and
+-- updates arrive every ~7 ms. Every update is written; QML coalesces per frame.
+-- Release follows WWDC18 "Designing Fluid Interfaces" / GNOME's swipeTracker:
+-- velocity over the last 150 ms, decide on the projected position, and pass the
+-- velocity on so the finish animation leaves at the speed the fingers had.
+local LP_START = 0.89       -- scale of the first event (Hyprland's dead zone)
+local LP_FULL = 0.45        -- scale at which the Launchpad is fully shown
+local LP_FULL_SPREAD = 1.6  -- scale at which an open Launchpad is fully gone
+local LP_PROJECT_MS = 200   -- how far ahead the release decision looks
+local LP_VELOCITY_MS = 150  -- window for the release velocity
+
+local lp = { open = false, scale = 1, progress = 0, samples = {} }
+
+local function lp_velocity()
+  local n = #lp.samples
+  if n < 2 then return 0 end
+  local last = lp.samples[n]
+  local first = last
+  for i = n, 1, -1 do
+    if last.t - lp.samples[i].t > LP_VELOCITY_MS then break end
+    first = lp.samples[i]
+  end
+  local dt = last.t - first.t
+  if dt <= 0 then return 0 end
+  return (last.p - first.p) / dt
+end
+
+local lp_action = {
+  start = function(e)
+    lp.open = lp_is_open()
+    lp.scale = 1
+    lp.progress = lp.open and 1 or 0
+    lp.samples = { { t = e.time_ms, p = lp.progress } }
+  end,
+  update = function(e)
+    if not e.scale then return end
+    lp.scale = e.scale
+    if lp.open then
+      lp.progress = 1 - lp_clamp((e.scale - 1) / (LP_FULL_SPREAD - 1))
+    else
+      lp.progress = lp_clamp((LP_START - e.scale) / (LP_START - LP_FULL))
+    end
+    table.insert(lp.samples, { t = e.time_ms, p = lp.progress })
+    if #lp.samples > 64 then table.remove(lp.samples, 1) end
+    if lp.open or e.scale < 1 then
+      lp_write(string.format("live %.4f", lp.progress))
+    end
+  end,
+  finish = function(e)
+    local v = lp_velocity()
+    local projected = lp.progress + v * LP_PROJECT_MS
+    if lp.open or lp.scale < 1 then
+      local target = (not e.cancelled and projected > 0.5) and 1 or 0
+      if e.cancelled then target = lp.open and 1 or 0 end
+      lp_write(string.format("end %d %.5f", target, v))
+    elseif not e.cancelled and lp.scale > 1.3 then
+      hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/show-desktop")
+    end
+  end,
+}
+
+-- Thumb + 3 fingers. libinput's thumb detection sometimes drops the thumb
+-- (it sits low on the pad and presses wide), which leaves a 3-finger pinch, so
+-- that runs the same handler. 3-finger swipes (workspaces) are unaffected.
+-- The open Launchpad inhibits binds/gestures; these must still work.
+hl.gesture({ fingers = 4, direction = "pinch", disable_inhibit = true, action = lp_action })
+hl.gesture({ fingers = 3, direction = "pinch", disable_inhibit = true, action = lp_action })
+
 -- Enable touchpad gestures for moving focus (helpful on scrolling layout).
 -- hl.gesture({ fingers = 3, direction = "left", action = function() hl.dispatch(hl.dsp.focus({ direction = "l" })) end })
 -- hl.gesture({ fingers = 3, direction = "right", action = function() hl.dispatch(hl.dsp.focus({ direction = "r" })) end })

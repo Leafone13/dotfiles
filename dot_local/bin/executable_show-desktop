@@ -1,0 +1,8 @@
+#!/bin/bash
+# Mac-style "show desktop": jump to an empty workspace, or back if already on one.
+windows=$(hyprctl activeworkspace -j | jq '.windows')
+if [ "$windows" -gt 0 ]; then
+  hyprctl dispatch workspace emptynm >/dev/null
+else
+  hyprctl dispatch workspace previous >/dev/null
+fi
