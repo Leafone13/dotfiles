@@ -244,14 +244,15 @@ Item {
     spring.start()
   }
 
-  // Soft walls: past a bound the overflow goes through an iOS rubber band
-  // (c = 0.55, d = 0.25 page), so content never runs far past a limit.
+  // Soft walls only at the first and last section: past them the overflow
+  // goes through an iOS rubber band (c = 0.55, d = 0.25 page). Between
+  // sections a long swipe runs freely, so one gesture can cross two.
   readonly property real rubberK: 0.55 / 0.25
   function rubberB(x) { return (1 - 1 / (x * root.rubberK + 1)) * 0.25 }
   function rubberInv(y) { return (1 / (1 - Math.min(0.999, y / 0.25)) - 1) / root.rubberK }
   function rubberSlope(x) { return 1 / ((x * root.rubberK + 1) * (x * root.rubberK + 1)) }
-  function dragLo() { return Math.max(0, root.dragStartPage - 1) }
-  function dragHi() { return Math.min(root.pageCount - 1, root.dragStartPage + 1) }
+  function dragLo() { return 0 }
+  function dragHi() { return root.pageCount - 1 }
   function softClamp(x) {
     var lo = root.dragLo(), hi = root.dragHi()
     if (x < lo) return lo - root.rubberB(lo - x)
@@ -353,6 +354,10 @@ Item {
       return
     }
     var now = Date.now()
+    // Hyprland sends ScrollEnd twice. The second one must not start a new
+    // gesture: that stopped the settle and snapped back to the nearest page,
+    // which cancelled fast flicks (they are released before mid-page).
+    if (wheel.phase === Qt.ScrollEnd && root.dragAxis === "end") return
     if (wheel.phase === Qt.ScrollBegin || root.dragAxis === "end") {
       spring.stop()
       root.dragAxis = ""
@@ -390,7 +395,9 @@ Item {
       root.dragHorizontal += dx
       root.dragRaw -= dx * root.swipeGain / Math.max(1, pages.width)
       if (root.dragAxisAccum < 40) return
-      root.dragAxis = Math.abs(root.dragVertical) > 1.5 * Math.abs(root.dragHorizontal) ? "y" : "x"
+      // Vertical only means something on Apps (it scrolls); elsewhere any
+      // swipe pages, so a diagonal one is not swallowed.
+      root.dragAxis = root.dragStartPage === root.appsSection && Math.abs(root.dragVertical) > 1.5 * Math.abs(root.dragHorizontal) ? "y" : "x"
       if (root.dragAxis === "y") {
         root.dragRaw = root.pageOffset
         // The travel spent locking the axis still scrolls.
@@ -420,15 +427,27 @@ Item {
       var commitV = Date.now() - root.lastMotion > 150 ? 0 : root.commitVelocity()
       // Hand over the visible speed: near a wall the page barely moves.
       var launchV = root.launchVelocity() * root.softSlope(root.dragRaw)
-      // A deliberate flick (>= 0.8 pages/s) goes one page in its direction,
-      // otherwise land on the nearest page; never more than one page away.
-      var target = Math.abs(commitV * 1000) >= 0.8 ? root.dragStartPage + Math.sign(commitV) : Math.round(root.pageOffset)
-      target = Math.max(root.dragStartPage - 1, Math.min(root.dragStartPage + 1, target))
+      // A deliberate flick (>= 0.8 pages/s) goes one section in its
+      // direction, or two once the page is already 1.5+ sections along
+      // (measured: neighbour flicks release at 0.3-0.7, cross-two drags at
+      // 1.1-3.7 raw); otherwise land on the nearest section.
+      var target
+      if (Math.abs(commitV * 1000) >= 0.8) {
+        var dir = Math.sign(commitV)
+        var along = (root.pageOffset - root.dragStartPage) * dir
+        if (along > 0) target = root.dragStartPage + dir * (along >= 1.5 ? 2 : 1)
+        // Dragged out, then flicked back: the next section that way.
+        else target = dir > 0 ? Math.floor(root.pageOffset) + 1 : Math.ceil(root.pageOffset) - 1
+      } else {
+        target = Math.round(root.pageOffset)
+      }
+      target = Math.max(0, Math.min(root.pageCount - 1, target))
       root.setPage(target, launchV * 1000)
     } else if (root.dragAxis === "") {
       root.setPage(Math.round(root.pageOffset))
     }
   }
+
 
   // ScrollEnd often arrives 30-110 ms after the fingers lift, while
   // the page stands still. A full frame without motion right after a fast
