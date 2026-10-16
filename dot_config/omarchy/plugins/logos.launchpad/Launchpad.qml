@@ -41,7 +41,7 @@ Item {
     target: root
     property: "reveal"
     easing.type: Easing.OutCubic
-    onFinished: if (!root.shown && root.bgHold <= 0) blurJob.running = true
+    onFinished: if (!root.shown && root.bgHold <= 0) { blurJob.running = true; root.releaseCapture() }
   }
 
   function animateTo(target, velocity, baseDuration) {
@@ -80,7 +80,7 @@ Item {
     to: 0
     duration: 200
     easing.type: Easing.InOutQuad
-    onFinished: if (!root.shown) blurJob.running = true
+    onFinished: if (!root.shown) { blurJob.running = true; root.releaseCapture() }
   }
   Timer { id: holdFloor; interval: 140; onTriggered: root.tryReleaseHold() }
   Timer { id: holdCap; interval: 600; onTriggered: { root.releaseRequested = true; root.tryReleaseHold() } }
@@ -124,6 +124,46 @@ Item {
         root.tryReleaseHold()
       }
     }
+  }
+
+  // Blur ramp: at the start of a pinch the desktop is captured once (our layer
+  // has drawn nothing yet) and blurred progressively, so the windows soften
+  // instead of showing sharp under a translucent smear; the pre-blurred
+  // wallpaper takes over once the capture is fully blurred. Closing never
+  // unblurs the old frame, it fades out.
+  property bool capRequested: false
+  property bool capClosing: false
+  property real capFade: 0
+  NumberAnimation { id: capFadeIn; target: root; property: "capFade"; from: 0; to: 1; duration: 90 }
+
+  function beginCapture() {
+    capFadeIn.stop()
+    root.capFade = 0
+    root.capClosing = false
+    root.capRequested = true
+    // Reset first so a frame from the previous gesture can never flash.
+    capture.captureSource = null
+    capture.captureSource = panel.screen
+    capture.captureFrame()
+  }
+  function releaseCapture() {
+    root.capRequested = false
+    capFadeIn.stop()
+    root.capFade = 0
+    capture.captureSource = null
+  }
+  // Blur amount of the captured desktop: eases in, full by p = 0.4.
+  function capBlur(p) {
+    if (root.capClosing) return 1
+    var t = Math.max(0, Math.min(1, p / 0.4))
+    return 1 - (1 - t) * (1 - t)
+  }
+  // Wallpaper: late when the blurred capture covers the start, earlier when
+  // there is no capture; blended by capFade so a late frame does not jump.
+  function wallpaperOpacity(p) {
+    var withCap = root.smoothstep(0.35, 0.85, p)
+    var without = root.smoothstep(0.2, 0.7, p)
+    return root.capFade * withCap + (1 - root.capFade) * without
   }
 
   function smoothstep(a, b, x) {
@@ -410,6 +450,8 @@ Item {
 
   function open(payloadJson, velocity) {
     root.cancelHold()
+    if (!root.opened && !root.live && root.reveal < 0.001) root.beginCapture()
+    root.capClosing = false
     if (!root.opened && !root.live) root.prepare()
     root.live = false
     root.opened = true
@@ -418,6 +460,7 @@ Item {
   }
 
   function close(velocity) {
+    root.capClosing = true
     root.live = false
     root.opened = false
     root.animateTo(0, velocity)
@@ -427,11 +470,18 @@ Item {
   // "end <1|0> <progress per ms>" to commit open / cancel or close.
   function handleGesture(line) {
     var parts = String(line || "").trim().split(/\s+/)
+    if (parts[0] === "begin") { if (!root.opened && root.reveal < 0.001) root.beginCapture(); return }
     if (parts.length < 2) return
     var value = Math.max(0, Math.min(1, parseFloat(parts[1]) || 0))
     if (parts[0] === "live") {
       if (root.holding || root.bgHold > 0) root.cancelHold()
       if (!root.live && !root.opened) root.prepare()
+      if (!root.live) {
+        // A spread from open lifts the blur like fog; a pinch from closed
+        // blurs a fresh capture (if "begin" was missed, capture now).
+        root.capClosing = root.opened
+        if (!root.opened && !root.capRequested) root.beginCapture()
+      }
       finishAnim.stop()
       root.live = true
       root.reveal = value
@@ -514,6 +564,7 @@ Item {
     if (index < 0 || index >= root.apps.length) return
     var app = root.apps[index]
     root.startHold()
+    root.capClosing = true
     // The grid leaves a little faster than a plain dismiss (Mac hint).
     root.live = false
     root.opened = false
@@ -629,6 +680,37 @@ Item {
       enabled: root.opened
     }
 
+    // Captured desktop, blurred at half resolution (cheaper, and matches the
+    // pre-blurred wallpaper's strength once scaled back up).
+    Item {
+      id: capLayer
+      width: Math.ceil(panel.width / 2)
+      height: Math.ceil(panel.height / 2)
+      transformOrigin: Item.TopLeft
+      scale: 2
+      opacity: root.capFade * (root.capClosing ? root.smoothstep(0, 0.35, root.reveal) : 1)
+      visible: opacity > 0
+
+      ScreencopyView {
+        id: capture
+        anchors.fill: parent
+        live: false
+        visible: false
+        onHasContentChanged: if (hasContent && root.capRequested) capFadeIn.restart()
+      }
+
+      MultiEffect {
+        anchors.fill: parent
+        source: capture
+        autoPaddingEnabled: false
+        blurEnabled: true
+        blurMax: 64
+        blurMultiplier: 0
+        blur: root.capBlur(root.reveal)
+        saturation: -0.25 * root.capBlur(root.reveal)
+      }
+    }
+
     // Background: the blurred wallpaper fades in over the windows (they are
     // gone once it is opaque), with a mild darkening on top.
     Image {
@@ -638,7 +720,7 @@ Item {
       asynchronous: true
       cache: false
       smooth: true
-      opacity: Math.max(root.smoothstep(0, 0.6, root.reveal), root.bgHold)
+      opacity: Math.max(root.wallpaperOpacity(root.reveal), root.bgHold)
       visible: opacity > 0
     }
 

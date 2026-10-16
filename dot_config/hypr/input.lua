@@ -144,6 +144,8 @@ local lp_action = {
     lp.scale = 1
     lp.progress = lp.open and 1 or 0
     lp.samples = { { t = e.time_ms, p = lp.progress } }
+    -- Lets the plugin capture the desktop before it draws anything.
+    if not lp.open then lp_write("begin") end
   end,
   update = function(e)
     if not e.scale then return end
