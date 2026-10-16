@@ -63,6 +63,9 @@
   },
   "plugins": [
     {
+      "id": "logos.cheatsheet"
+    },
+    {
       "id": "logos.launchpad"
     }
   ],

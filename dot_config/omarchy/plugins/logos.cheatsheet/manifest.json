@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.cheatsheet",
+  "name": "Cheatsheet",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Fullscreen tmux cheatsheet in the Launchpad style, with search",
+  "kinds": [
+    "menu"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "menu": "Cheatsheet.qml"
+  }
+}

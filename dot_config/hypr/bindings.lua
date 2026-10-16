@@ -43,3 +43,10 @@ o.bind("SUPER + X", "Close window", hl.dsp.window.close())
 -- Tmux cheatsheet focused on stock tmux bindings (SUPER+ALT+K was: Omarchy tmux keybindings)
 hl.unbind("SUPER + ALT + K")
 o.bind("SUPER + ALT + K", "Tmux cheatsheet", os.getenv("HOME") .. "/.local/bin/tmux-cheatsheet")
+-- Same cheatsheet fullscreen in the Launchpad style (logos.cheatsheet plugin).
+-- code:49 is the grave/tilde key, so it also works on the Russian layout (ё).
+o.bind("CTRL + SHIFT + code:49", "Tmux cheatsheet (fullscreen)", "omarchy-shell shell toggle logos.cheatsheet")
+
+-- Hotel AnyDesk picker (~/.local/bin/hotel) (SUPER+SHIFT+A was: ChatGPT)
+hl.unbind("SUPER + SHIFT + A")
+o.bind("SUPER + SHIFT + A", "Hotels (AnyDesk)", os.getenv("HOME") .. "/.local/bin/hotel --menu")
