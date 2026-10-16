@@ -7,7 +7,9 @@ import QtQuick.Effects
 import qs.Commons
 
 // Mac-style Launchpad: the blurred wallpaper fades in over the windows, and a
-// grid of app icons split into pages zooms in, with type-to-search. Summon with `omarchy-shell shell toggle logos.launchpad`, or live
+// grid zooms in. Three sections swipe like pages: Remote Control (the AnyDesk
+// list of ~/.local/bin/hotel, SUPER+SHIFT+A), Work (pinned apps) and Apps (all
+// apps). Remote Control and Apps each have type-to-search. Summon with `omarchy-shell shell toggle logos.launchpad`, or live
 // from the Hyprland 4-finger pinch (input.lua writes progress to gestureFile).
 Item {
   id: root
@@ -17,8 +19,22 @@ Item {
 
   property bool opened: false
   property string filterText: ""
+  // Selection inside the current section's list.
   property int selectedIndex: 0
   property var apps: []
+  // Sections: 0 Remote Control, 1 Work, 2 Apps. `section` is the one being shown or
+  // headed to; the last one is remembered across opens (sectionFile).
+  readonly property var sectionNames: ["Remote Control", "Work", "Apps"]
+  readonly property int appsSection: 2
+  property int section: 0
+  property int lastSection: 0
+  property var hotels: []
+  property var work: []
+  readonly property var workIds: ["slack", "WhatsApp", "chromium", "obsidian"]
+  property var resetItem: ({ kind: "reset", name: "Reset AnyDesk", icon: "", mono: "↻" })
+  readonly property string hotelScript: Quickshell.env("HOME") + "/.local/bin/hotel"
+  // Vertical scroll of the Apps grid in px (it does not fit on one screen).
+  property real appsScroll: 0
   // Desktop ids Omarchy's own launcher hides (launcher.hides + NoDisplay/OnlyShowIn scan).
   property var configuredHidden: ({})
   property var scannedHidden: ({})
@@ -262,7 +278,22 @@ Item {
   function setPage(page, velocity, animate) {
     var p = Math.max(0, Math.min(root.pageCount - 1, page))
     pages.currentIndex = p
-    if (animate === false) { spring.stop(); root.pageOffset = p }
+    if (p !== root.section) {
+      root.section = p
+      root.selectedIndex = 0
+      // Each section's search starts empty.
+      if (root.filterText) { root.filterText = ""; root.appsScroll = 0; root.rebuild() }
+    }
+    if (p !== root.lastSection) {
+      root.lastSection = p
+      sectionFile.setText(p + "\n")
+    }
+    if (animate === false) {
+      spring.stop()
+      root.pageOffset = p
+      // An unchanged pageOffset sends no change signal; place the view anyway.
+      pages.contentX = pages.originX + p * pages.width
+    }
     else root.springTo(p, velocity || 0)
   }
 
@@ -308,8 +339,14 @@ Item {
   function handleWheel(wheel) {
     var touchpad = wheel.phase !== Qt.NoScrollPhase || wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0
     if (!touchpad) {
-      // Mouse wheel: one page per notch-group, either axis.
-      var d = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y) ? wheel.angleDelta.x : wheel.angleDelta.y
+      // Mouse wheel: scrolls the Apps grid (a row per notch); elsewhere, or
+      // sideways, one section per notch-group.
+      var horizontal = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y)
+      if (!horizontal && root.section === root.appsSection && root.appsMaxScroll > 0) {
+        root.scrollApps(-wheel.angleDelta.y / 120 * root.cellH)
+        return
+      }
+      var d = horizontal ? wheel.angleDelta.x : wheel.angleDelta.y
       bg.wheelAccum += d
       if (bg.wheelAccum <= -240) { root.goToPage(pages.currentIndex + 1); bg.wheelAccum = 0 }
       else if (bg.wheelAccum >= 240) { root.goToPage(pages.currentIndex - 1); bg.wheelAccum = 0 }
@@ -354,16 +391,17 @@ Item {
       root.dragRaw -= dx * root.swipeGain / Math.max(1, pages.width)
       if (root.dragAxisAccum < 40) return
       root.dragAxis = Math.abs(root.dragVertical) > 1.5 * Math.abs(root.dragHorizontal) ? "y" : "x"
-      if (root.dragAxis === "y") root.dragRaw = root.pageOffset
-      dx = 0; dy = 0
+      if (root.dragAxis === "y") {
+        root.dragRaw = root.pageOffset
+        // The travel spent locking the axis still scrolls.
+        dy = root.dragVertical
+      } else dy = 0
+      dx = 0
     }
     if (root.dragAxis === "y") {
-      // Vertical two-finger scroll flips once per gesture, like the wheel.
-      root.dragVertical += dy
-      if (Math.abs(root.dragVertical) >= 300) {
-        root.goToPage(root.dragStartPage + (root.dragVertical < 0 ? 1 : -1))
-        root.dragAxis = "done"
-      }
+      // Vertical two-finger scroll moves the Apps grid 1:1 (natural, like the
+      // pages); Remote Control and Work fit on one screen, so it does nothing there.
+      if (root.dragStartPage === root.appsSection) root.scrollApps(-dy * root.swipeGain)
       return
     }
     if (root.dragAxis !== "x") return
@@ -432,9 +470,96 @@ Item {
   // Grid geometry, sized from the screen like macOS (7 x 5 on a laptop).
   readonly property int columns: Math.max(4, Math.min(8, Math.floor(panel.width / 190)))
   readonly property int rows: Math.max(3, Math.min(6, Math.floor((panel.height - 220) / 170)))
-  readonly property int perPage: columns * rows
-  readonly property int pageCount: Math.max(1, Math.ceil(apps.length / perPage))
+  readonly property int pageCount: 3
   readonly property int iconSize: Math.round(Math.min(96, Math.max(56, panel.height / 12)))
+  readonly property real cellW: pages.width / root.columns
+  readonly property real cellH: Math.min(pages.height / root.rows, root.iconSize + 70)
+  readonly property real appsContentH: Math.ceil(root.apps.length / root.columns) * root.cellH
+  readonly property real appsMaxScroll: Math.max(0, root.appsContentH - pages.height)
+  // 1 on the Apps section, fading out over the swipe to Work.
+  readonly property real appsVis: Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset - root.appsSection)))
+  // The search field: on Remote Control and Apps, gone on Work.
+  readonly property real searchVis: Math.max(root.appsVis, Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset))))
+  function hasSearch(i) { return i === 0 || i === root.appsSection }
+
+  function sectionItems(i) {
+    if (i === 0) return root.filterHotels([root.resetItem].concat(root.hotels), i === root.section ? root.filterText : "")
+    if (i === 1) return root.work
+    return root.apps
+  }
+  readonly property var currentItems: root.sectionItems(root.section)
+
+  function scrollApps(delta) {
+    root.appsScroll = Math.max(0, Math.min(root.appsMaxScroll, root.appsScroll + delta))
+  }
+  // Scroll the Apps grid so the selected row is in view.
+  function revealSelection() {
+    if (root.section !== root.appsSection) return
+    var top = Math.floor(root.selectedIndex / root.columns) * root.cellH
+    if (top < root.appsScroll) root.appsScroll = top
+    else if (top + root.cellH > root.appsScroll + pages.height) root.scrollApps(top + root.cellH - pages.height - root.appsScroll)
+  }
+
+  // Tile code and short label per hotels.tsv alias stem, from launchpad.tsv
+  // next to it (kept out of this file, which is in the public dotfiles).
+  // Unknown aliases fall back to the stem and the description.
+  property var hotelCodes: ({})
+  property var hotelNames: ({})
+  property string hotelsText: ""
+
+  function parseHotelMeta(text) {
+    var codes = ({}), names = ({})
+    var lines = String(text || "").split(/\n/)
+    for (var i = 0; i < lines.length; i++) {
+      if (!lines[i].trim() || lines[i].trim().charAt(0) === "#") continue
+      var cols = lines[i].split("\t")
+      var stem = (cols[0] || "").trim()
+      if (!stem) continue
+      if (cols[1] && cols[1].trim() !== "-") codes[stem] = cols[1].trim()
+      if (cols[2] && cols[2].trim()) names[stem] = cols[2].trim()
+    }
+    root.hotelCodes = codes
+    root.hotelNames = names
+    root.parseHotels(root.hotelsText)
+  }
+
+  // hotels.tsv: alias, ID, description, ... (tab-separated, "#" comments).
+  // File order is kept (cctv is last on purpose). The tile shows the hotel
+  // code, the label the description without its "(host)" part.
+  // Name matches first (prefix before substring), then alias/description.
+  function filterHotels(items, text) {
+    var q = String(text || "").trim().toLowerCase()
+    if (!q) return items
+    var scored = []
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i]
+      var lname = it.name.toLowerCase()
+      var extra = ((it.alias || "") + " " + (it.desc || "")).toLowerCase()
+      var score = lname.indexOf(q) === 0 ? 3 : lname.indexOf(q) !== -1 ? 2 : extra.indexOf(q) !== -1 ? 1 : 0
+      if (score) scored.push({ item: it, score: score, order: i })
+    }
+    scored.sort(function(a, b) { return (b.score - a.score) || (a.order - b.order) })
+    return scored.map(function(x) { return x.item })
+  }
+
+  function parseHotels(text) {
+    var out = []
+    var lines = String(text || "").split(/\n/)
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i]
+      if (!line.trim() || line.trim().charAt(0) === "#") continue
+      var cols = line.split("\t")
+      var alias = (cols[0] || "").trim()
+      if (!alias) continue
+      var desc = (cols[2] || alias).trim()
+      var stem = alias.split("-")[0]
+      var label = root.hotelNames[stem] || desc.replace(/\s*\(.*\)\s*$/, "").split(",")[0].trim() || alias
+      var code = root.hotelCodes[stem] || stem.toUpperCase()
+      var role = /-(client|server)$/.test(alias) ? alias.split("-").pop() : ""
+      out.push({ kind: "hotel", alias: alias, name: label, desc: desc + " " + code, icon: "", mono: code.split("-").pop(), role: role })
+    }
+    root.hotels = out
+  }
 
   function pluginId() {
     return (root.manifest && root.manifest.id) || "logos.launchpad"
@@ -442,10 +567,11 @@ Item {
 
   function prepare() {
     root.filterText = ""
-    root.selectedIndex = 0
     root.keyboardNav = false
+    root.appsScroll = 0
     root.rebuild()
-    root.setPage(0, undefined, false)
+    root.setPage(root.lastSection, undefined, false)
+    root.selectedIndex = 0
   }
 
   function open(payloadJson, velocity) {
@@ -529,12 +655,15 @@ Item {
     var values = DesktopEntries.applications.values || []
     var q = root.filterText.trim().toLowerCase()
     var out = []
+    var byId = ({})
     for (var i = 0; i < values.length; i++) {
       var entry = values[i]
-      if (!entry || entry.noDisplay) continue
+      if (!entry) continue
       var id = String(entry.id || "")
       var name = String(entry.name || "")
       if (!id || !name) continue
+      byId[id] = entry
+      if (entry.noDisplay) continue
       if (root.configuredHidden[id] || root.scannedHidden[id]) continue
       var score = 0
       if (q) {
@@ -546,23 +675,36 @@ Item {
         else if (extra.indexOf(q) !== -1) score = 1
         else continue
       }
-      out.push({ id: id, name: name, icon: root.iconFor(entry.icon), score: score })
+      out.push({ kind: "app", id: id, name: name, icon: root.iconFor(entry.icon), score: score })
     }
     out.sort(function(a, b) { return (b.score - a.score) || a.name.localeCompare(b.name) })
     root.apps = out
-    if (root.selectedIndex >= out.length) root.selectedIndex = Math.max(0, out.length - 1)
+    // Work: fixed order, never filtered by search or the hidden lists.
+    var work = []
+    for (var w = 0; w < root.workIds.length; w++) {
+      var e = byId[root.workIds[w]]
+      if (e) work.push({ kind: "app", id: String(e.id), name: String(e.name), icon: root.iconFor(e.icon) })
+    }
+    root.work = work
+    var anydesk = byId["anydesk"]
+    root.resetItem = { kind: "reset", name: "Reset AnyDesk", alias: "reset", desc: "anydesk new id", icon: anydesk ? root.iconFor(anydesk.icon) : "", mono: "↻" }
+    if (root.selectedIndex >= root.currentItems.length) root.selectedIndex = Math.max(0, root.currentItems.length - 1)
   }
 
+  // Remote Control and Apps search their own list; typing on Work switches
+  // to Apps, so pinch, type, Enter works there too.
   function setFilter(text) {
+    if (!root.hasSearch(root.section)) root.setPage(root.appsSection)
     root.filterText = text
     root.selectedIndex = 0
     root.rebuild()
-    root.setPage(0, undefined, false)
+    root.appsScroll = 0
   }
 
   function launch(index) {
-    if (index < 0 || index >= root.apps.length) return
-    var app = root.apps[index]
+    var items = root.currentItems
+    if (index < 0 || index >= items.length) return
+    var app = items[index]
     root.startHold()
     root.capClosing = true
     // The grid leaves a little faster than a plain dismiss (Mac hint).
@@ -570,24 +712,35 @@ Item {
     root.opened = false
     root.animateTo(0, undefined, 220)
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId())
-    // Same launch path as Omarchy's AppLibrary: a uwsm scope via gtk-launch.
-    Quickshell.execDetached(["uwsm-app", "--", "gtk-launch", app.id + ".desktop"])
+    if (app.kind === "hotel" || app.kind === "reset") {
+      // Menu mode: notifications, and the Windows password goes to the clipboard.
+      Quickshell.execDetached([root.hotelScript, "--menu", app.kind === "reset" ? "reset" : app.alias])
+    } else {
+      // Same launch path as Omarchy's AppLibrary: a uwsm scope via gtk-launch.
+      Quickshell.execDetached(["uwsm-app", "--", "gtk-launch", app.id + ".desktop"])
+    }
   }
 
+  // Left/Right run on into the neighbouring section, like Mac pages.
   function moveSelection(delta) {
-    if (root.apps.length === 0) return
+    var count = root.currentItems.length
     if (!root.keyboardNav) { root.keyboardNav = true; return }
-    var next = Math.max(0, Math.min(root.apps.length - 1, root.selectedIndex + delta))
-    root.selectedIndex = next
-    var page = Math.floor(next / root.perPage)
-    if (page !== pages.currentIndex) root.setPage(page)
+    var next = root.selectedIndex + delta
+    if (next < 0 && delta === -1 && root.section > 0) {
+      root.setPage(root.section - 1)
+      root.selectedIndex = Math.max(0, root.currentItems.length - 1)
+    } else if (next >= count && delta === 1 && root.section < root.pageCount - 1) {
+      root.setPage(root.section + 1)
+    } else {
+      root.selectedIndex = Math.max(0, Math.min(count - 1, next))
+    }
+    root.revealSelection()
   }
 
   function goToPage(page) {
     var p = Math.max(0, Math.min(root.pageCount - 1, page))
     if (p === pages.currentIndex && Math.abs(root.pageOffset - p) < 0.001) return
     root.setPage(p)
-    root.selectedIndex = Math.min(root.apps.length - 1, p * root.perPage)
   }
 
   FileView {
@@ -622,6 +775,34 @@ Item {
     printErrors: false
     onFileChanged: reload()
     onLoaded: root.iconStyle = text().trim() === "brand" ? "brand" : "duotone"
+  }
+
+  // Last shown section; read once, written by setPage.
+  FileView {
+    id: sectionFile
+    path: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/omarchy-launchpad/section"
+    printErrors: false
+    onLoaded: {
+      var s = parseInt(text().trim())
+      if (s >= 0 && s < root.pageCount) root.lastSection = s
+    }
+  }
+
+  // The same directory `hotel --menu` (SUPER+SHIFT+A) lists.
+  FileView {
+    path: Quickshell.env("HOME") + "/Work/Yaya/anydesk/hotels.tsv"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { root.hotelsText = text(); root.parseHotels(root.hotelsText) }
+  }
+
+  FileView {
+    path: Quickshell.env("HOME") + "/Work/Yaya/anydesk/launchpad.tsv"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.parseHotelMeta(text())
   }
 
   // Tells the Hyprland side whether a pinch should open or close.
@@ -794,6 +975,7 @@ Item {
 
       // Search, styled like the Omarchy menu header: plain prompt text at
       // heading size (dimmed until typed into) over a hairline divider.
+      // It belongs to Apps and fades with the swipe away from it.
       Item {
         id: search
         anchors.horizontalCenter: parent.horizontalCenter
@@ -801,6 +983,8 @@ Item {
         anchors.topMargin: Math.round(panel.height * 0.06)
         width: Math.min(360, panel.width * 0.4)
         height: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
+        opacity: root.searchVis
+        visible: opacity > 0
 
         Text {
           anchors.left: parent.left
@@ -844,29 +1028,32 @@ Item {
         onWidthChanged: contentX = originX + root.pageOffset * width
         model: root.pageCount
 
+        // One page per section. Apps scrolls vertically (appsScroll) when it
+        // does not fit; the others are centred.
         delegate: Item {
           id: pageItem
           required property int index
+          readonly property var items: root.sectionItems(index)
           width: pages.width
           height: pages.height
+          clip: true
 
           Grid {
-            anchors.centerIn: parent
+            id: grid
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: height <= pageItem.height ? Math.round((pageItem.height - height) / 2) : -root.appsScroll
             columns: root.columns
-            readonly property real cellW: pages.width / root.columns
-            readonly property real cellH: Math.min(pages.height / root.rows, root.iconSize + 70)
 
             Repeater {
-              model: root.apps.slice(pageItem.index * root.perPage, (pageItem.index + 1) * root.perPage)
+              model: pageItem.items
 
               delegate: Item {
                 id: cell
                 required property var modelData
                 required property int index
-                readonly property int globalIndex: pageItem.index * root.perPage + index
-                readonly property bool selected: root.keyboardNav && globalIndex === root.selectedIndex
-                width: parent.cellW
-                height: parent.cellH
+                readonly property bool selected: root.keyboardNav && pageItem.index === root.section && index === root.selectedIndex
+                width: root.cellW
+                height: root.cellH
 
                 Rectangle {
                   anchors.centerIn: parent
@@ -930,25 +1117,40 @@ Item {
                       fragmentShader: Qt.resolvedUrl("duotone.frag.qsb")
                     }
 
-                    // Fallback tile when the app ships no usable icon.
+                    // Monogram tile: hotels (RIET, HEG) and apps that ship no
+                    // usable icon (their first letter).
                     Rectangle {
                       anchors.fill: parent
                       visible: icon.status !== Image.Ready
                       radius: root.radius
-                      color: root.fgA(0.12)
-                      Text {
+                      color: root.fgA(hover.pressed ? 0.2 : 0.12)
+                      readonly property string mono: cell.modelData.mono || (cell.modelData.name || "?").charAt(0).toUpperCase()
+                      Column {
                         anchors.centerIn: parent
-                        text: (cell.modelData.name || "?").charAt(0).toUpperCase()
-                        color: root.textColor
-                        font.family: root.fontFamily
-                        font.pixelSize: root.iconSize * 0.45
-                        font.bold: true
+                        Text {
+                          anchors.horizontalCenter: parent.horizontalCenter
+                          text: parent.parent.mono
+                          color: root.textColor
+                          font.family: root.fontFamily
+                          font.pixelSize: root.iconSize * (parent.parent.mono.length <= 1 ? 0.45 : parent.parent.mono.length <= 3 ? 0.32 : parent.parent.mono.length === 4 ? 0.26 : 0.21)
+                          font.bold: true
+                        }
+                        // client / server for hotels with two PCs.
+                        Text {
+                          anchors.horizontalCenter: parent.horizontalCenter
+                          visible: !!cell.modelData.role
+                          text: cell.modelData.role || ""
+                          color: root.textColor
+                          opacity: 0.7
+                          font.family: root.fontFamily
+                          font.pixelSize: Math.round(root.iconSize * 0.15)
+                        }
                       }
                     }
                   }
 
                   Text {
-                    width: root.iconSize + 40
+                    width: Math.max(root.iconSize + 40, root.cellW - 24)
                     horizontalAlignment: Text.AlignHCenter
                     textFormat: Text.PlainText
                     text: cell.modelData.name
@@ -968,7 +1170,10 @@ Item {
                   anchors.fill: parent
                   hoverEnabled: true
                   onContainsMouseChanged: if (containsMouse) root.keyboardNav = false
-                  onClicked: root.launch(cell.globalIndex)
+                  onClicked: {
+                    if (pageItem.index !== root.section) return
+                    root.launch(cell.index)
+                  }
                 }
               }
             }
@@ -979,42 +1184,53 @@ Item {
       // "No results" hint
       Text {
         anchors.centerIn: pages
-        visible: root.apps.length === 0
+        visible: root.hasSearch(root.section) && root.currentItems.length === 0 && root.searchVis > 0
+        opacity: 0.7 * root.searchVis
         textFormat: Text.PlainText
-        text: root.filterText ? "No apps match “" + root.filterText + "”" : "No apps found"
+        text: (root.section === 0 ? "No remote PCs" : "No apps") + (root.filterText ? " match “" + root.filterText + "”" : " found")
         color: root.textColor
-        opacity: 0.7
         font.family: root.fontFamily
         font.pixelSize: 18
       }
 
-      // Page indicator, styled like the bar's workspaces: page numbers, the
-      // current one shown as the focused-workspace glyph, others dimmed.
+      // Section labels, styled like the bar's workspaces: the current one
+      // carries the focused-workspace glyph, the others are dimmed.
       Row {
         id: dots
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Math.round(panel.height * 0.06)
-        spacing: Style.space(1)
-        visible: root.pageCount > 1
+        spacing: Style.space(14)
 
         Repeater {
-          model: root.pageCount
+          model: root.sectionNames
           delegate: Item {
             id: dot
             required property int index
+            required property string modelData
             readonly property bool current: index === root.shownPage
-            width: Style.space(20)
+            width: pageLabel.implicitWidth + 16
             height: pageLabel.implicitHeight + 12
 
-            Text {
+            Row {
               id: pageLabel
               anchors.centerIn: parent
-              text: dot.current ? "\uDB85\uDCFB" : String(dot.index + 1)
-              color: root.textColor
+              spacing: Style.space(6)
               opacity: dot.current ? 1 : 0.5
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
+
+              Text {
+                text: "\uDB85\uDCFB"
+                color: root.textColor
+                opacity: dot.current ? 1 : 0
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+              Text {
+                text: dot.modelData
+                color: root.textColor
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
             }
 
             MouseArea {
