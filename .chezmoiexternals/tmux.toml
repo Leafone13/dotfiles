@@ -1,0 +1,12 @@
+{{- if .omarchy }}
+# tmux plugins, loaded directly from tmux.conf (no TPM)
+[".config/tmux/plugins/tmux-resurrect"]
+type = "git-repo"
+url = "https://github.com/tmux-plugins/tmux-resurrect.git"
+refreshPeriod = "168h"
+
+[".config/tmux/plugins/tmux-continuum"]
+type = "git-repo"
+url = "https://github.com/tmux-plugins/tmux-continuum.git"
+refreshPeriod = "168h"
+{{- end }}
