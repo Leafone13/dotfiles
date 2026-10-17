@@ -7,9 +7,9 @@ import QtQuick.Effects
 import qs.Commons
 
 // Mac-style Launchpad: the blurred wallpaper fades in over the windows, and a
-// grid zooms in. Three sections swipe like pages: Remote Control (the AnyDesk
-// list of ~/.local/bin/hotel, SUPER+SHIFT+A), Work (pinned apps) and Apps (all
-// apps). Remote Control and Apps each have type-to-search. Summon with `omarchy-shell shell toggle logos.launchpad`, or live
+// grid zooms in. Four sections swipe like pages: DevPods (~/.local/bin/pod; a
+// devpod tile opens its actions), Remote Control (the AnyDesk list of
+// ~/.local/bin/hotel, SUPER+SHIFT+A), Work (pinned apps) and Apps (all apps). Remote Control and Apps each have type-to-search. Summon with `omarchy-shell shell toggle logos.launchpad`, or live
 // from the Hyprland 4-finger pinch (input.lua writes progress to gestureFile).
 Item {
   id: root
@@ -22,17 +22,24 @@ Item {
   // Selection inside the current section's list.
   property int selectedIndex: 0
   property var apps: []
-  // Sections: 0 Remote Control, 1 Work, 2 Apps. `section` is the one being shown or
-  // headed to; the last one is remembered across opens (sectionFile).
-  readonly property var sectionNames: ["Remote Control", "Work", "Apps"]
-  readonly property int appsSection: 2
+  // Sections: 0 DevPods, 1 Remote Control, 2 Work, 3 Apps. `section` is the one being
+  // shown or headed to; the last one is remembered across opens (sectionFile).
+  readonly property var sectionNames: ["DevPods", "Remote Control", "Work", "Apps"]
+  readonly property int podsSection: 0
+  readonly property int remoteSection: 1
+  readonly property int workSection: 2
+  readonly property int appsSection: 3
   property int section: 0
   property int lastSection: 0
   property var hotels: []
   property var work: []
-  readonly property var workIds: ["slack", "WhatsApp", "chromium", "obsidian"]
+  readonly property var workIds: ["slack", "WhatsApp", "Outlook", "chromium", "obsidian"]
   property var resetItem: ({ kind: "reset", name: "Reset AnyDesk", icon: "", mono: "↻" })
   readonly property string hotelScript: Quickshell.env("HOME") + "/.local/bin/hotel"
+  // DevPods: `pod list` rows; openPod is the devpod whose actions are shown (null: the list).
+  readonly property string podScript: Quickshell.env("HOME") + "/.local/bin/pod"
+  property var pods: []
+  property var openPod: null
   // Vertical scroll of the Apps grid in px (it does not fit on one screen).
   property real appsScroll: 0
   // Desktop ids Omarchy's own launcher hides (launcher.hides + NoDisplay/OnlyShowIn scan).
@@ -45,8 +52,11 @@ Item {
   property real reveal: 0
   property bool live: false
   readonly property bool shown: root.opened || root.live || root.reveal > 0.001
-  // Arrow keys show a selection; the mouse never highlights (like macOS).
-  property bool keyboardNav: false
+  // One cursor for keys and mouse, like Omarchy's menus: arrows move it, the
+  // pointer moving over a tile takes it. Hidden until either is used.
+  property bool cursorActive: false
+  // The pointer put the cursor there, so leaving the tile hides it again.
+  property bool cursorByMouse: false
   property string blurredWallpaper: ""
 
   // Finish like GNOME's swipeTracker: ease-out cubic leaves at 3x its average
@@ -70,7 +80,12 @@ Item {
       if (toward < 0.002) toward = 0.002
       duration = Math.max(100, Math.min(400, 3 * distance / toward))
     }
-    if (distance < 0.001) { root.reveal = target; return }
+    if (distance < 0.001) {
+      root.reveal = target
+      // No animation means no onFinished, so release the capture here.
+      if (!root.shown && root.bgHold <= 0) root.releaseCapture()
+      return
+    }
     finishAnim.from = root.reveal
     finishAnim.to = target
     finishAnim.duration = duration
@@ -282,6 +297,7 @@ Item {
     if (p !== root.section) {
       root.section = p
       root.selectedIndex = 0
+      root.openPod = null
       // Each section's search starts empty.
       if (root.filterText) { root.filterText = ""; root.appsScroll = 0; root.rebuild() }
     }
@@ -489,7 +505,7 @@ Item {
   // Grid geometry, sized from the screen like macOS (7 x 5 on a laptop).
   readonly property int columns: Math.max(4, Math.min(8, Math.floor(panel.width / 190)))
   readonly property int rows: Math.max(3, Math.min(6, Math.floor((panel.height - 220) / 170)))
-  readonly property int pageCount: 3
+  readonly property int pageCount: 4
   readonly property int iconSize: Math.round(Math.min(96, Math.max(56, panel.height / 12)))
   readonly property real cellW: pages.width / root.columns
   readonly property real cellH: Math.min(pages.height / root.rows, root.iconSize + 70)
@@ -498,13 +514,53 @@ Item {
   // 1 on the Apps section, fading out over the swipe to Work.
   readonly property real appsVis: Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset - root.appsSection)))
   // The search field: on Remote Control and Apps, gone on Work.
-  readonly property real searchVis: Math.max(root.appsVis, Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset))))
-  function hasSearch(i) { return i === 0 || i === root.appsSection }
+  readonly property real searchVis: Math.max(root.appsVis, Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset - root.remoteSection))))
+  // The open devpod's name in the search field's place, fading with the swipe.
+  readonly property real podTitleVis: root.openPod ? Math.max(0, Math.min(1, 1 - Math.abs(root.pageOffset - root.podsSection))) : 0
+  function hasSearch(i) { return i === root.remoteSection || i === root.appsSection }
 
   function sectionItems(i) {
-    if (i === 0) return root.filterHotels([root.resetItem].concat(root.hotels), i === root.section ? root.filterText : "")
-    if (i === 1) return root.work
+    if (i === root.podsSection) return root.openPod ? root.podActions(root.openPod) : root.pods
+    if (i === root.remoteSection) return root.filterHotels([root.resetItem].concat(root.hotels), i === root.section ? root.filterText : "")
+    if (i === root.workSection) return root.work
     return root.apps
+  }
+
+  // `pod list`: name, label, context, state. The tile shows the label's
+  // initials and the state under them.
+  function parsePods(text) {
+    var out = []
+    var lines = String(text || "").split(/\n/)
+    for (var i = 0; i < lines.length; i++) {
+      var cols = lines[i].split("\t")
+      var name = (cols[0] || "").trim()
+      if (!name) continue
+      var label = (cols[1] || name).trim()
+      var state = (cols[3] || "").trim()
+      var mono = label.split(/[\s-]+/).map(function(w) { return w.charAt(0).toUpperCase() }).join("").slice(0, 3)
+      out.push({ kind: "pod", pod: name, name: label, icon: "", mono: mono, state: state,
+                 role: state === "Running" ? "running" : state === "NotFound" ? "not created" : "stopped" })
+    }
+    root.pods = out
+    if (root.openPod) {
+      var again = out.filter(function(x) { return x.pod === root.openPod.pod })
+      root.openPod = again.length ? again[0] : null
+    }
+  }
+
+  // Enter starts the devpod first when it is not running; Turn off only when it is.
+  function podActions(pod) {
+    var running = pod.state === "Running"
+    var out = [{ kind: "podAction", action: "enter", pod: pod.pod, name: running ? "Enter" : "Start & enter", icon: "", mono: "\u25B6" }]
+    out.push({ kind: "podAction", action: "recreate", pod: pod.pod, name: "Recreate", icon: "", mono: "\u21BB" })
+    if (running) out.push({ kind: "podAction", action: "stop", pod: pod.pod, name: "Turn off", icon: "", mono: "\u23FB" })
+    out.push({ kind: "podBack", name: "Back", icon: "", mono: "\u2039" })
+    return out
+  }
+
+  function openPodActions(pod) {
+    root.openPod = pod
+    root.selectedIndex = 0
   }
   readonly property var currentItems: root.sectionItems(root.section)
 
@@ -586,7 +642,9 @@ Item {
 
   function prepare() {
     root.filterText = ""
-    root.keyboardNav = false
+    root.openPod = null
+    podList.running = true
+    root.cursorActive = false
     root.appsScroll = 0
     root.rebuild()
     root.setPage(root.lastSection, undefined, false)
@@ -616,6 +674,12 @@ Item {
   function handleGesture(line) {
     var parts = String(line || "").trim().split(/\s+/)
     if (parts[0] === "begin") { if (!root.opened && root.reveal < 0.001) root.beginCapture(); return }
+    // The gesture ended without ever going live (a spread, or a pinch too small).
+    if (parts[0] === "cancel") {
+      if (root.live) root.close(0)
+      else if (!root.shown && root.bgHold <= 0) root.releaseCapture()
+      return
+    }
     if (parts.length < 2) return
     var value = Math.max(0, Math.min(1, parseFloat(parts[1]) || 0))
     if (parts[0] === "live") {
@@ -724,6 +788,9 @@ Item {
     var items = root.currentItems
     if (index < 0 || index >= items.length) return
     var app = items[index]
+    // Inside DevPods a tile can open the actions or go back; the Launchpad stays.
+    if (app.kind === "pod") { root.openPodActions(app); return }
+    if (app.kind === "podBack") { root.openPod = null; root.selectedIndex = 0; return }
     root.startHold()
     root.capClosing = true
     // The grid leaves a little faster than a plain dismiss (Mac hint).
@@ -731,7 +798,10 @@ Item {
     root.opened = false
     root.animateTo(0, undefined, 220)
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId())
-    if (app.kind === "hotel" || app.kind === "reset") {
+    if (app.kind === "podAction") {
+      // Enter and Recreate open a terminal; Turn off reports by notification.
+      Quickshell.execDetached([root.podScript, app.action, app.pod])
+    } else if (app.kind === "hotel" || app.kind === "reset") {
       // Menu mode: notifications, and the Windows password goes to the clipboard.
       Quickshell.execDetached([root.hotelScript, "--menu", app.kind === "reset" ? "reset" : app.alias])
     } else {
@@ -743,7 +813,8 @@ Item {
   // Left/Right run on into the neighbouring section, like Mac pages.
   function moveSelection(delta) {
     var count = root.currentItems.length
-    if (!root.keyboardNav) { root.keyboardNav = true; return }
+    root.cursorByMouse = false
+    if (!root.cursorActive) { root.cursorActive = true; return }
     var next = root.selectedIndex + delta
     if (next < 0 && delta === -1 && root.section > 0) {
       root.setPage(root.section - 1)
@@ -794,6 +865,12 @@ Item {
     printErrors: false
     onFileChanged: reload()
     onLoaded: root.iconStyle = text().trim() === "brand" ? "brand" : "duotone"
+  }
+
+  Process {
+    id: podList
+    command: [root.podScript, "list"]
+    stdout: StdioCollector { onStreamFinished: root.parsePods(this.text) }
   }
 
   // Last shown section; read once, written by setPage.
@@ -888,7 +965,8 @@ Item {
       height: Math.ceil(panel.height / 2)
       transformOrigin: Item.TopLeft
       scale: 2
-      opacity: root.capFade * (root.capClosing ? root.smoothstep(0, 0.35, root.reveal) : 1)
+      // Only while the Launchpad is shown: a stray capture never covers the desktop.
+      opacity: root.shown ? root.capFade * (root.capClosing ? root.smoothstep(0, 0.35, root.reveal) : 1) : 0
       visible: opacity > 0
 
       ScreencopyView {
@@ -954,6 +1032,7 @@ Item {
           root.toggleIconStyle()
         } else if (event.key === Qt.Key_Escape) {
           if (root.filterText) root.setFilter("")
+          else if (root.openPod && root.section === root.podsSection) { root.openPod = null; root.selectedIndex = 0 }
           else root.dismiss()
         } else if (Util.editsFilter(event, root.filterText)) {
           root.setFilter(Util.editedFilter(event, root.filterText))
@@ -1028,6 +1107,29 @@ Item {
         }
       }
 
+      Text {
+        anchors.centerIn: search
+        opacity: root.podTitleVis
+        visible: opacity > 0
+        textFormat: Text.PlainText
+        text: root.openPod ? root.openPod.name : ""
+        color: root.textColor
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.heading
+      }
+
+      // DevPods with no devpod folders found.
+      Text {
+        anchors.centerIn: pages
+        visible: root.section === root.podsSection && !root.openPod && root.pods.length === 0
+        opacity: 0.7
+        textFormat: Text.PlainText
+        text: "No devpods in ~/Work/devpods"
+        color: root.textColor
+        font.family: root.fontFamily
+        font.pixelSize: 18
+      }
+
       ListView {
         id: pages
         anchors.top: search.bottom
@@ -1070,7 +1172,7 @@ Item {
                 id: cell
                 required property var modelData
                 required property int index
-                readonly property bool selected: root.keyboardNav && pageItem.index === root.section && index === root.selectedIndex
+                readonly property bool selected: root.cursorActive && pageItem.index === root.section && index === root.selectedIndex
                 width: root.cellW
                 height: root.cellH
 
@@ -1079,10 +1181,10 @@ Item {
                   width: root.iconSize + 36
                   height: parent.height - 6
                   radius: root.radius
-                  visible: cell.selected
-                  color: Color.menu.selectedBackground
+                  color: cell.selected ? Color.menu.selectedBackground : "transparent"
                   border.width: 1
-                  border.color: Color.menu.selectedBorder
+                  border.color: cell.selected ? Color.menu.selectedBorder : "transparent"
+                  Behavior on color { ColorAnimation { duration: 60 } }
                 }
 
                 Column {
@@ -1154,7 +1256,7 @@ Item {
                           font.pixelSize: root.iconSize * (parent.parent.mono.length <= 1 ? 0.45 : parent.parent.mono.length <= 3 ? 0.32 : parent.parent.mono.length === 4 ? 0.26 : 0.21)
                           font.bold: true
                         }
-                        // client / server for hotels with two PCs.
+                        // client / server for hotels with two PCs, running / stopped for devpods.
                         Text {
                           anchors.horizontalCenter: parent.horizontalCenter
                           visible: !!cell.modelData.role
@@ -1188,7 +1290,16 @@ Item {
                   id: hover
                   anchors.fill: parent
                   hoverEnabled: true
-                  onContainsMouseChanged: if (containsMouse) root.keyboardNav = false
+                  cursorShape: Qt.PointingHandCursor
+                  // Only real pointer motion: a tile that slides under a still
+                  // pointer (opening, paging) does not take the cursor.
+                  onPositionChanged: {
+                    if (pageItem.index !== root.section) return
+                    root.cursorActive = true
+                    root.cursorByMouse = true
+                    root.selectedIndex = cell.index
+                  }
+                  onExited: if (root.cursorByMouse && cell.selected) root.cursorActive = false
                   onClicked: {
                     if (pageItem.index !== root.section) return
                     root.launch(cell.index)
@@ -1206,7 +1317,7 @@ Item {
         visible: root.hasSearch(root.section) && root.currentItems.length === 0 && root.searchVis > 0
         opacity: 0.7 * root.searchVis
         textFormat: Text.PlainText
-        text: (root.section === 0 ? "No remote PCs" : "No apps") + (root.filterText ? " match “" + root.filterText + "”" : " found")
+        text: (root.section === root.remoteSection ? "No remote PCs" : "No apps") + (root.filterText ? " match “" + root.filterText + "”" : " found")
         color: root.textColor
         font.family: root.fontFamily
         font.pixelSize: 18

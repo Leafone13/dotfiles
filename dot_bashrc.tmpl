@@ -30,6 +30,9 @@ source "$OMARCHY_PATH/default/bash/rc"
 alias vup='nmcli connection up "YaYa Tech"'
 alias vdown='nmcli connection down "YaYa Tech"'
 
+# AnyDesk reset: stop, delete service.conf + system.conf, start again
+alias Anyre="$HOME/.local/bin/anydesk-reset"
+
 # OpenSSH agent (systemd user ssh-agent.socket); fallback until env is set at login
 [[ -z $SSH_AUTH_SOCK ]] && export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 {{- else }}

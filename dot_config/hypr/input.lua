@@ -122,7 +122,7 @@ local LP_FULL_SPREAD = 1.6  -- scale at which an open Launchpad is fully gone
 local LP_PROJECT_MS = 200   -- how far ahead the release decision looks
 local LP_VELOCITY_MS = 150  -- window for the release velocity
 
-local lp = { open = false, scale = 1, progress = 0, samples = {} }
+local lp = { open = false, live = false, scale = 1, progress = 0, samples = {} }
 
 local function lp_velocity()
   local n = #lp.samples
@@ -143,6 +143,7 @@ local lp_action = {
     lp.open = lp_is_open()
     lp.scale = 1
     lp.progress = lp.open and 1 or 0
+    lp.live = false
     lp.samples = { { t = e.time_ms, p = lp.progress } }
     -- Lets the plugin capture the desktop before it draws anything.
     if not lp.open then lp_write("begin") end
@@ -157,19 +158,27 @@ local lp_action = {
     end
     table.insert(lp.samples, { t = e.time_ms, p = lp.progress })
     if #lp.samples > 64 then table.remove(lp.samples, 1) end
-    if lp.open or e.scale < 1 then
+    -- Once live, keep reporting even if the fingers spread back past the
+    -- start, so the plugin sees progress 0 and an "end", not a stale value.
+    if lp.open or lp.live or e.scale < 1 then
+      lp.live = true
       lp_write(string.format("live %.4f", lp.progress))
     end
   end,
   finish = function(e)
     local v = lp_velocity()
     local projected = lp.progress + v * LP_PROJECT_MS
-    if lp.open or lp.scale < 1 then
+    if lp.open or lp.live then
       local target = (not e.cancelled and projected > 0.5) and 1 or 0
       if e.cancelled then target = lp.open and 1 or 0 end
       lp_write(string.format("end %d %.5f", target, v))
-    elseif not e.cancelled and lp.scale > 1.3 then
-      hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/show-desktop")
+    else
+      -- Never went live: drop the desktop capture "begin" asked for, or it
+      -- stays on screen as a frozen, blurry frame.
+      lp_write("cancel")
+      if not e.cancelled and lp.scale > 1.3 then
+        hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/show-desktop")
+      end
     end
   end,
 }

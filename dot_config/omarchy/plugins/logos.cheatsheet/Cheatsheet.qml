@@ -136,7 +136,7 @@ Item {
   }
 
   // Scrolling, the Launchpad paging principles applied to a continuous list
-  // (see ~/Work/omarchy-launchpad/research/paging-analysis.md):
+  // (see ~/Projects/omarchy-launchpad/research/paging-analysis.md):
   // - two fingers move the text 1:1 (same gain as the Launchpad pages);
   // - past an end the overflow goes through an iOS rubber band;
   // - on lift the visible velocity (a 50 ms fit times the rubber slope) goes
