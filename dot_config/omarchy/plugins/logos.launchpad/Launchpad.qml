@@ -527,7 +527,7 @@ Item {
   }
 
   // `pod list`: name, label, context, state. The tile shows the label's
-  // initials and the state under them.
+  // initials (a "(...)" part left out) and the state under them.
   function parsePods(text) {
     var out = []
     var lines = String(text || "").split(/\n/)
@@ -537,7 +537,7 @@ Item {
       if (!name) continue
       var label = (cols[1] || name).trim()
       var state = (cols[3] || "").trim()
-      var mono = label.split(/[\s-]+/).map(function(w) { return w.charAt(0).toUpperCase() }).join("").slice(0, 3)
+      var mono = label.replace(/\s*\(.*\)\s*/g, " ").trim().split(/[\s-]+/).map(function(w) { return w.charAt(0).toUpperCase() }).join("").slice(0, 3)
       out.push({ kind: "pod", pod: name, name: label, icon: "", mono: mono, state: state,
                  role: state === "Running" ? "running" : state === "NotFound" ? "not created" : "stopped" })
     }
