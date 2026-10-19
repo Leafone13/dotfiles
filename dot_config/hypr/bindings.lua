@@ -46,6 +46,8 @@ o.bind("SUPER + ALT + K", "Tmux cheatsheet", os.getenv("HOME") .. "/.local/bin/t
 -- Same cheatsheet fullscreen in the Launchpad style (logos.cheatsheet plugin).
 -- code:49 is the grave/tilde key, so it also works on the Russian layout (ё).
 o.bind("CTRL + SHIFT + code:49", "Tmux cheatsheet (fullscreen)", "omarchy-shell shell toggle logos.cheatsheet")
+-- Launchpad from the keyboard too (the pinch needs the touchpad); Esc closes it.
+o.bind("SUPER + code:49", "Launchpad", "omarchy-shell shell toggle logos.launchpad")
 
 -- Hotel AnyDesk picker (~/.local/bin/hotel) (SUPER+SHIFT+A was: ChatGPT)
 hl.unbind("SUPER + SHIFT + A")
