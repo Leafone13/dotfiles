@@ -358,11 +358,13 @@ Item {
     // (15 per notch), while every touchpad event has a phase (logged 2026-10-19).
     var touchpad = wheel.phase !== Qt.NoScrollPhase
     if (!touchpad) {
-      // Mouse wheel: scrolls the Apps grid (a row per notch); elsewhere, or
-      // sideways, one section per notch-group.
+      // Mouse wheel: scrolls the Apps grid (a row per notch) until its edge,
+      // then pages like elsewhere; one section per two notches.
       var horizontal = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y)
-      if (!horizontal && root.section === root.appsSection && root.appsMaxScroll > 0) {
+      var atEdge = wheel.angleDelta.y > 0 ? root.appsScroll <= 0 : root.appsScroll >= root.appsMaxScroll
+      if (!horizontal && root.section === root.appsSection && !atEdge) {
         root.scrollApps(-wheel.angleDelta.y / 120 * root.cellH)
+        bg.wheelAccum = 0
         return
       }
       var d = horizontal ? wheel.angleDelta.x : wheel.angleDelta.y
