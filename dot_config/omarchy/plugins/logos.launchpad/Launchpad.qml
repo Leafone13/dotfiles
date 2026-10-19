@@ -1030,10 +1030,6 @@ Item {
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_T && event.modifiers === Qt.ControlModifier) {
           root.toggleIconStyle()
-        } else if (event.nativeScanCode === 49 && (event.modifiers & Qt.MetaModifier)) {
-          // SUPER+` opens it (bindings.lua), but Hyprland binds are inhibited
-          // while it is open, so the same keys close it here.
-          root.dismiss()
         } else if (event.key === Qt.Key_Escape) {
           if (root.filterText) root.setFilter("")
           else if (root.openPod && root.section === root.podsSection) { root.openPod = null; root.selectedIndex = 0 }
