@@ -7,8 +7,9 @@ import QtQuick.Effects
 import qs.Commons
 
 // Mac-style Launchpad: the blurred wallpaper fades in over the windows, and a
-// grid zooms in. Four sections swipe like pages: DevPods (~/.local/bin/pod; a
-// devpod tile opens its actions), Remote Control (the AnyDesk list of
+// grid zooms in. Five sections swipe like pages: DevPods (~/.local/bin/pod; a
+// devpod tile opens its actions), Services (~/.local/bin/svc; a tile turns a local
+// background service on or off), Remote Control (the AnyDesk list of
 // ~/.local/bin/hotel, SUPER+SHIFT+A), Work (pinned apps) and Apps (all apps). Remote Control and Apps each have type-to-search. Summon with `omarchy-shell shell toggle logos.launchpad`, or live
 // from the Hyprland 4-finger pinch (input.lua writes progress to gestureFile).
 Item {
@@ -22,13 +23,14 @@ Item {
   // Selection inside the current section's list.
   property int selectedIndex: 0
   property var apps: []
-  // Sections: 0 DevPods, 1 Remote Control, 2 Work, 3 Apps. `section` is the one being
+  // Sections: 0 DevPods, 1 Services, 2 Remote Control, 3 Work, 4 Apps. `section` is the one being
   // shown or headed to; the last one is remembered across opens (sectionFile).
-  readonly property var sectionNames: ["DevPods", "Remote Control", "Work", "Apps"]
+  readonly property var sectionNames: ["DevPods", "Services", "Remote Control", "Work", "Apps"]
   readonly property int podsSection: 0
-  readonly property int remoteSection: 1
-  readonly property int workSection: 2
-  readonly property int appsSection: 3
+  readonly property int servicesSection: 1
+  readonly property int remoteSection: 2
+  readonly property int workSection: 3
+  readonly property int appsSection: 4
   property int section: 0
   property int lastSection: 0
   property var hotels: []
@@ -40,6 +42,9 @@ Item {
   readonly property string podScript: Quickshell.env("HOME") + "/.local/bin/pod"
   property var pods: []
   property var openPod: null
+  // Services: `svc list` rows; a tile toggles its service (on when off, off when on).
+  readonly property string svcScript: Quickshell.env("HOME") + "/.local/bin/svc"
+  property var services: []
   // Vertical scroll of the Apps grid in px (it does not fit on one screen).
   property real appsScroll: 0
   // Desktop ids Omarchy's own launcher hides (launcher.hides + NoDisplay/OnlyShowIn scan).
@@ -509,7 +514,7 @@ Item {
   // Grid geometry, sized from the screen like macOS (7 x 5 on a laptop).
   readonly property int columns: Math.max(4, Math.min(8, Math.floor(panel.width / 190)))
   readonly property int rows: Math.max(3, Math.min(6, Math.floor((panel.height - 220) / 170)))
-  readonly property int pageCount: 4
+  readonly property int pageCount: 5
   readonly property int iconSize: Math.round(Math.min(96, Math.max(56, panel.height / 12)))
   readonly property real cellW: pages.width / root.columns
   readonly property real cellH: Math.min(pages.height / root.rows, root.iconSize + 70)
@@ -525,6 +530,7 @@ Item {
 
   function sectionItems(i) {
     if (i === root.podsSection) return root.openPod ? root.podActions(root.openPod) : root.pods
+    if (i === root.servicesSection) return root.services
     if (i === root.remoteSection) return root.filterHotels([root.resetItem].concat(root.hotels), i === root.section ? root.filterText : "")
     if (i === root.workSection) return root.work
     return root.apps
@@ -560,6 +566,24 @@ Item {
     if (running) out.push({ kind: "podAction", action: "stop", pod: pod.pod, name: "Turn off", icon: "", mono: "\u23FB" })
     out.push({ kind: "podBack", name: "Back", icon: "", mono: "\u2039" })
     return out
+  }
+
+  // `svc list`: unit, label, state. Same tile as a devpod: initials (a "(...)" part
+  // left out) and the state under them.
+  function parseServices(text) {
+    var out = []
+    var lines = String(text || "").split(/\n/)
+    for (var i = 0; i < lines.length; i++) {
+      var cols = lines[i].split("\t")
+      var unit = (cols[0] || "").trim()
+      if (!unit) continue
+      var label = (cols[1] || unit).trim()
+      var state = (cols[2] || "").trim()
+      var mono = label.replace(/\s*\(.*\)\s*/g, " ").trim().split(/[\s-]+/).map(function(w) { return w.charAt(0).toUpperCase() }).join("").slice(0, 3)
+      out.push({ kind: "svc", svc: unit, name: label, icon: "", mono: mono, state: state,
+                 role: state === "Running" ? "on" : state === "Failed" ? "failed" : "off" })
+    }
+    root.services = out
   }
 
   function openPodActions(pod) {
@@ -648,6 +672,7 @@ Item {
     root.filterText = ""
     root.openPod = null
     podList.running = true
+    svcList.running = true
     root.cursorActive = false
     root.appsScroll = 0
     root.rebuild()
@@ -813,6 +838,9 @@ Item {
     if (app.kind === "podAction") {
       // Enter and Recreate open a terminal; Turn off reports by notification.
       Quickshell.execDetached([root.podScript, app.action, app.pod])
+    } else if (app.kind === "svc") {
+      // On when off, off when on; the result comes as a notification.
+      Quickshell.execDetached([root.svcScript, "toggle", app.svc])
     } else if (app.kind === "hotel" || app.kind === "reset") {
       // Menu mode: notifications, and the Windows password goes to the clipboard.
       Quickshell.execDetached([root.hotelScript, "--menu", app.kind === "reset" ? "reset" : app.alias])
@@ -883,6 +911,12 @@ Item {
     id: podList
     command: [root.podScript, "list"]
     stdout: StdioCollector { onStreamFinished: root.parsePods(this.text) }
+  }
+
+  Process {
+    id: svcList
+    command: [root.svcScript, "list"]
+    stdout: StdioCollector { onStreamFinished: root.parseServices(this.text) }
   }
 
   // Last shown section; read once, written by setPage.
@@ -1162,6 +1196,18 @@ Item {
         opacity: 0.7
         textFormat: Text.PlainText
         text: "No devpods in ~/Work/devpods"
+        color: root.textColor
+        font.family: root.fontFamily
+        font.pixelSize: 18
+      }
+
+      // Services with no list (~/.config/launchpad/services, one `unit<TAB>label` per line).
+      Text {
+        anchors.centerIn: pages
+        visible: root.section === root.servicesSection && root.services.length === 0
+        opacity: 0.7
+        textFormat: Text.PlainText
+        text: "No services in ~/.config/launchpad/services"
         color: root.textColor
         font.family: root.fontFamily
         font.pixelSize: 18
