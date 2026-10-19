@@ -354,7 +354,9 @@ Item {
 
 
   function handleWheel(wheel) {
-    var touchpad = wheel.phase !== Qt.NoScrollPhase || wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0
+    // Only the phase tells them apart: the mouse wheel also carries pixelDelta
+    // (15 per notch), while every touchpad event has a phase (logged 2026-10-19).
+    var touchpad = wheel.phase !== Qt.NoScrollPhase
     if (!touchpad) {
       // Mouse wheel: scrolls the Apps grid (a row per notch); elsewhere, or
       // sideways, one section per notch-group.
@@ -701,6 +703,14 @@ Item {
     }
   }
 
+  // One step back: clear the search, leave a devpod's actions, else close.
+  // Esc, the right mouse button and the mouse's Back button.
+  function back() {
+    if (root.filterText) root.setFilter("")
+    else if (root.openPod && root.section === root.podsSection) { root.openPod = null; root.selectedIndex = 0 }
+    else root.dismiss()
+  }
+
   function dismiss() {
     root.close()
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId())
@@ -1011,11 +1021,16 @@ Item {
       visible: opacity > 0
     }
 
-    // Click on empty space closes; wheel / two-finger swipe flips pages.
+    // Click on empty space closes, right click (anywhere, tiles pass it on)
+    // steps back; wheel / two-finger swipe flips pages.
     MouseArea {
       id: bg
       anchors.fill: parent
-      onClicked: root.dismiss()
+      acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.BackButton
+      onClicked: function(mouse) {
+        if (mouse.button === Qt.LeftButton) root.dismiss()
+        else root.back()
+      }
       property real wheelAccum: 0
       onWheel: function(wheel) {
         root.handleWheel(wheel)
@@ -1031,9 +1046,7 @@ Item {
         if (event.key === Qt.Key_T && event.modifiers === Qt.ControlModifier) {
           root.toggleIconStyle()
         } else if (event.key === Qt.Key_Escape) {
-          if (root.filterText) root.setFilter("")
-          else if (root.openPod && root.section === root.podsSection) { root.openPod = null; root.selectedIndex = 0 }
-          else root.dismiss()
+          root.back()
         } else if (Util.editsFilter(event, root.filterText)) {
           root.setFilter(Util.editedFilter(event, root.filterText))
         } else if (event.key === Qt.Key_Left) {
@@ -1096,6 +1109,28 @@ Item {
           font.family: root.fontFamily
           font.pixelSize: Style.font.heading
           elide: Text.ElideRight
+        }
+
+        // Clears the search with the mouse (Esc does the same).
+        Text {
+          id: clearSearch
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          visible: root.filterText !== ""
+          text: "\u2715"
+          color: root.textColor
+          opacity: clearArea.containsMouse ? 1 : 0.58
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+
+          MouseArea {
+            id: clearArea
+            anchors.fill: parent
+            anchors.margins: -Style.space(8)
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.setFilter("")
+          }
         }
 
         Rectangle {

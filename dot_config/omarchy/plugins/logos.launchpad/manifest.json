@@ -6,10 +6,18 @@
   "author": "logos",
   "description": "Mac-style fullscreen app grid with blur, pages and search",
   "kinds": [
-    "menu"
+    "menu",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "menu": "Launchpad.qml"
+    "menu": "Launchpad.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Launchpad",
+    "description": "Opens the Launchpad",
+    "category": "Launcher",
+    "allowMultiple": false
   }
 }
