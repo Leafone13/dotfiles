@@ -313,6 +313,10 @@ BarWidget {
                 text: modelData.icon
                 tooltipText: modelData.tip
                 onPressed: function(button) {
+                  // Ignore clicks while the drawer is still sliding: the icons move in
+                  // under a cursor that sits on the chevron (with no tray apps the mirror
+                  // button lands there first).
+                  if (button !== Qt.LeftButton || root.revealProgress < 0.99) return
                   if (root.bar) root.bar.run(modelData.cmd)
                 }
               }
@@ -409,6 +413,10 @@ BarWidget {
                 text: modelData.icon
                 tooltipText: modelData.tip
                 onPressed: function(button) {
+                  // Ignore clicks while the drawer is still sliding: the icons move in
+                  // under a cursor that sits on the chevron (with no tray apps the mirror
+                  // button lands there first).
+                  if (button !== Qt.LeftButton || root.revealProgress < 0.99) return
                   if (root.bar) root.bar.run(modelData.cmd)
                 }
               }
