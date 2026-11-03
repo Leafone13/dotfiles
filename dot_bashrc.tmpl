@@ -29,6 +29,9 @@ source "$OMARCHY_PATH/default/bash/rc"
 # WireGuard tunnel "YaYa Tech" via NetworkManager
 alias vup='nmcli connection up "YaYa Tech"'
 alias vdown='nmcli connection down "YaYa Tech"'
+# Same tunnel via the gateway's local address: when the office has no internet, from inside the office
+alias vupalarm='nmcli connection down "YaYa Tech" 2>/dev/null; nmcli connection up "YaYa Tech local"'
+alias vdownalarm='nmcli connection down "YaYa Tech local"; nmcli connection up "YaYa Tech"'
 
 # AnyDesk reset: stop, delete service.conf + system.conf, start again
 alias Anyre="$HOME/.local/bin/anydesk-reset"
