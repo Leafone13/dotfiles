@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.keys",
+  "name": "Keys",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Bar button: pick a keyring secret and copy it",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Keys",
+    "description": "Pick a keyring secret and copy it",
+    "category": "Launcher",
+    "allowMultiple": false
+  }
+}

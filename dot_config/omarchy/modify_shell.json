@@ -40,6 +40,9 @@ managed=$(cat <<'JSON'
       ],
       "right": [
         {
+          "id": "logos.keys"
+        },
+        {
           "id": "omarchy.tray"
         },
         {
