@@ -5,26 +5,13 @@ live=$(cat)
 managed=$(cat <<'JSON'
 {
   "bar": {
-    "centerAnchor": "omarchy.clock",
     "layout": {
       "center": [
         {
-          "id": "omarchy.indicators"
-        },
-        {
+          "id": "omarchy.clock",
           "format": "dddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
-          "id": "omarchy.clock",
           "verticalFormat": "HH\n—\nmm"
-        },
-        {
-          "id": "omarchy.keyboard-layout"
-        },
-        {
-          "id": "omarchy.weather"
-        },
-        {
-          "id": "omarchy.system-update"
         }
       ],
       "left": [
@@ -40,10 +27,13 @@ managed=$(cat <<'JSON'
       ],
       "right": [
         {
-          "id": "logos.keys"
+          "id": "omarchy.tray"
         },
         {
-          "id": "omarchy.tray"
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "id": "logos.keys"
         },
         {
           "id": "omarchy.agents"
@@ -63,7 +53,34 @@ managed=$(cat <<'JSON'
         {
           "id": "omarchy.power"
         }
-      ]
+      ],
+      "centerBegin": [
+        {
+          "id": "omarchy.indicators"
+        }
+      ],
+      "centerEnd": [
+        {
+          "id": "omarchy.elsewhen",
+          "cities": [
+            {
+              "name": "Amsterdam",
+              "zone": "Europe/Amsterdam"
+            },
+            {
+              "name": "New York",
+              "zone": "America/New_York"
+            }
+          ]
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.system-update"
+        }
+      ],
+      "tray": []
     },
     "position": "top",
     "transparent": false
@@ -78,6 +95,9 @@ managed=$(cat <<'JSON'
     },
     {
       "id": "logos.launchpad"
+    },
+    {
+      "id": "io.voxtype.settings"
     }
   ],
   "version": 1
