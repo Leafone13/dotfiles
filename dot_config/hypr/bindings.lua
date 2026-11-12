@@ -54,9 +54,39 @@ hl.bind("SUPER + code:49", hl.dsp.exec_cmd("omarchy-shell shell toggle logos.lau
 hl.unbind("SUPER + SHIFT + A")
 o.bind("SUPER + SHIFT + A", "Hotels (AnyDesk)", os.getenv("HOME") .. "/.local/bin/hotel --menu")
 
+-- Give Right Alt and Alt + Space back: Left Alt + Right Alt switches the layout (grp:alts_toggle).
+hl.unbind("ALT + Alt_R")
+hl.unbind("ALT + SPACE")
+
 -- Dictation keys from before Alt + Space and Right Alt became the defaults.
 -- Remove these lines to give the keys back to applications.
 if o.dictation_installed and o.dictation_installed() then
   o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
   o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
 end
+
+-- Universal copy/paste/select all by keycode, so they also work on the Russian layout:
+-- Omarchy's defaults send the key by name ("C"), which the ru layout doesn't have
+-- ("send_key_state: key not found"). code:38 = A, code:54 = C, code:55 = V.
+local function send_once(mods, key)
+  hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down" }))
+  hl.timer(function()
+    hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up" }))
+  end, { timeout = 50, type = "oneshot" })
+end
+
+local function in_terminal()
+  local window = hl.get_active_window()
+  for _, tag in ipairs(window and window.tags or {}) do
+    if tag:gsub("%*$", "") == "terminal" then return true end
+  end
+  return false
+end
+
+local function clipboard(key)
+  return function() send_once(in_terminal() and "CTRL SHIFT" or "CTRL", key) end
+end
+
+o.rebind("SUPER + A", "Select all", function() send_once("CTRL", "code:38") end)
+o.rebind("SUPER + C", "Universal copy", clipboard("code:54"))
+o.rebind("SUPER + V", "Universal paste", clipboard("code:55"))
