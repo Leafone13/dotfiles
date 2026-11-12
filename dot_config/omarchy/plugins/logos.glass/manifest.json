@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.glass",
+  "name": "Glass",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Bar button: cycle bar and windows: clear, frosted, original",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Glass",
+    "description": "Cycle bar and windows: clear, frosted, original",
+    "category": "Appearance",
+    "allowMultiple": false
+  }
+}

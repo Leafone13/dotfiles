@@ -1,7 +1,8 @@
 #!/bin/sh
-# Omarchy shell settings, managed here. The bar look is runtime state (double-clicking the bar cycles
-# bar.background: opaque, glassy, none; older Omarchy wrote bar.transparent), so it is taken from the
-# live file and never synced.
+# Omarchy shell settings, managed here. The bar look is runtime state (bar.background: none, glassy,
+# opaque; set by double-clicking the bar and by the logos.glass button; older Omarchy wrote
+# bar.transparent), so it is taken from the live file and never synced. Output has sorted keys, as
+# `omarchy bar` writes them, so a click does not show up as chezmoi drift.
 live=$(cat)
 managed=$(cat <<'JSON'
 {
@@ -35,6 +36,9 @@ managed=$(cat <<'JSON'
         },
         {
           "id": "logos.keys"
+        },
+        {
+          "id": "logos.glass"
         },
         {
           "id": "omarchy.agents"
@@ -106,4 +110,4 @@ JSON
 )
 look=$(printf '%s' "$live" | jq -c '.bar // {} | with_entries(select(.key == "background" or .key == "transparent"))' 2>/dev/null) || look=
 [ -n "$look" ] || look='{}'
-printf '%s\n' "$managed" | jq --argjson look "$look" '.bar += $look'
+printf '%s\n' "$managed" | jq -S --argjson look "$look" '.bar += $look'
