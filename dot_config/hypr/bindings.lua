@@ -53,3 +53,10 @@ hl.bind("SUPER + code:49", hl.dsp.exec_cmd("omarchy-shell shell toggle logos.lau
 -- Hotel AnyDesk picker (~/.local/bin/hotel) (SUPER+SHIFT+A was: ChatGPT)
 hl.unbind("SUPER + SHIFT + A")
 o.bind("SUPER + SHIFT + A", "Hotels (AnyDesk)", os.getenv("HOME") .. "/.local/bin/hotel --menu")
+
+-- Dictation keys from before Alt + Space and Right Alt became the defaults.
+-- Remove these lines to give the keys back to applications.
+if o.dictation_installed and o.dictation_installed() then
+  o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
+  o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
+end

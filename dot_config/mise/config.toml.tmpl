@@ -1,11 +1,7 @@
 {{- if .omarchy -}}
 [tools]
 chezmoi = "latest"
-claude = "latest"
-codex = "latest"
-gh = "latest"
 "github:skevetter/devpod" = "latest"
-node = "26.8.2"
 {{- else -}}
 # Devpod personal layer: tools wanted in every devpod.
 # System tools that servers have (vim/vi, tmux, git, ...) come from apt in `install`;
@@ -29,4 +25,6 @@ jq = "latest"
 {{- end }}
 
 [settings.upgrade]
+{{- if not .omarchy }}
 auto_prune = false
+{{- end }}

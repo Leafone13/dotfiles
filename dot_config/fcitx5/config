@@ -2,3 +2,18 @@
 # fcitx5 here only serves XCompose sequences, so no trigger keys.
 [Hotkey/TriggerKeys]
 
+[Hotkey/ActivateKeys]
+0=Henkan
+
+[Hotkey/DeactivateKeys]
+0=Muhenkan
+
+[Hotkey/AltTriggerKeys]
+0=Shift_L
+
+[Hotkey/EnumerateGroupForwardKeys]
+
+[Hotkey/EnumerateGroupBackwardKeys]
+
+[Behavior]
+ActiveByDefault=False

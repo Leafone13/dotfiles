@@ -61,3 +61,8 @@ hl.config({
 -- Launchpad (logos.launchpad shell plugin) draws its own progressive blurred
 -- background, so the compositor neither blurs nor animates its layer.
 hl.layer_rule({ match = { namespace = "^omarchy-launchpad$" }, blur = false, no_anim = true })
+
+-- Opt another application in to Omarchy's standard transparency.
+-- Find its class with: hyprctl clients
+-- o.transparent_window("my-app")
+-- o.transparent_window("my-app", "0.9 0.85") -- Custom active/inactive opacity.
