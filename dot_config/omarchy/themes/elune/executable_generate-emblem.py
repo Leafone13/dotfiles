@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Elune wallpaper + unlock logo from the braille tree emblem (emblem.txt).
+"""Elune wallpaper (to ~/.config/omarchy/backgrounds/elune) + unlock logo (to <out-dir>) from the braille tree emblem (emblem.txt).
 Usage: generate-emblem.py <braille.txt> <out-dir> [seed]   (needs ImageMagick 7)"""
 import atexit, math, os, random, shutil, subprocess, sys, tempfile
 
@@ -82,8 +82,10 @@ with open(p("stars.mvg"), "w") as f:
 magick("-size", f"{W}x{H}", "xc:black", "-draw", f"@{p('stars.mvg')}",
        "(", "+clone", "-blur", "0x6", "-level", "0,55%", ")", "-compose", "screen", "-composite", p("stars.png"))
 
-os.makedirs(os.path.join(outdir, "backgrounds"), exist_ok=True)
-wall = os.path.join(outdir, "backgrounds", "0-emblem.webp")
+# wallpaper goes to the local backgrounds folder, never into the theme (the theme is in public chezmoi)
+walldir = os.path.expanduser("~/.config/omarchy/backgrounds/elune")
+os.makedirs(walldir, exist_ok=True)
+wall = os.path.join(walldir, "0-emblem.webp")
 magick(p("sky.png"), p("moon.png"), "-compose", "screen", "-composite", p("stars.png"), "-compose", "screen", "-composite",
        p("emglow.png"), "-geometry", f"+{CX - ew // 2}+{CY - eh // 2}", "-compose", "over", "-composite",
        # fine grain so the gradients don't band
