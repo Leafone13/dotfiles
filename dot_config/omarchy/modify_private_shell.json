@@ -1,6 +1,7 @@
 #!/bin/sh
-# Omarchy shell settings, managed here. bar.transparent is runtime state (toggled by double-clicking
-# the bar), so it is taken from the live file and never synced.
+# Omarchy shell settings, managed here. The bar look is runtime state (double-clicking the bar cycles
+# bar.background: opaque, glassy, none; older Omarchy wrote bar.transparent), so it is taken from the
+# live file and never synced.
 live=$(cat)
 managed=$(cat <<'JSON'
 {
@@ -82,8 +83,7 @@ managed=$(cat <<'JSON'
       ],
       "tray": []
     },
-    "position": "top",
-    "transparent": false
+    "position": "top"
   },
   "idle": {
     "lock": 300,
@@ -104,9 +104,6 @@ managed=$(cat <<'JSON'
 }
 JSON
 )
-t=$(printf '%s' "$live" | jq -e '.bar.transparent | booleans' 2>/dev/null) || t=
-if [ -n "$t" ]; then
-  printf '%s\n' "$managed" | jq --argjson t "$t" '.bar.transparent = $t'
-else
-  printf '%s\n' "$managed" | jq .
-fi
+look=$(printf '%s' "$live" | jq -c '.bar // {} | with_entries(select(.key == "background" or .key == "transparent"))' 2>/dev/null) || look=
+[ -n "$look" ] || look='{}'
+printf '%s\n' "$managed" | jq --argjson look "$look" '.bar += $look'
