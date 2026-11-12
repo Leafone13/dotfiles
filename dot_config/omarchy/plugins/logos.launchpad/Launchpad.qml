@@ -658,7 +658,7 @@ Item {
       var stem = alias.split("-")[0]
       var label = root.hotelNames[stem] || desc.replace(/\s*\(.*\)\s*$/, "").split(",")[0].trim() || alias
       var code = root.hotelCodes[stem] || stem.toUpperCase()
-      var role = /-(client|server)$/.test(alias) ? alias.split("-").pop() : ""
+      var role = /-(client|server|reception|mini)$/.test(alias) ? alias.split("-").pop() : ""
       out.push({ kind: "hotel", alias: alias, name: label, desc: desc + " " + code, icon: "", mono: code.split("-").pop(), role: role })
     }
     root.hotels = out
@@ -1339,7 +1339,7 @@ Item {
                           font.pixelSize: root.iconSize * (parent.parent.mono.length <= 1 ? 0.45 : parent.parent.mono.length <= 3 ? 0.32 : parent.parent.mono.length === 4 ? 0.26 : 0.21)
                           font.bold: true
                         }
-                        // client / server for hotels with two PCs, running / stopped for devpods.
+                        // client / server or reception / mini for hotels with two PCs, running / stopped for devpods.
                         Text {
                           anchors.horizontalCenter: parent.horizontalCenter
                           visible: !!cell.modelData.role
