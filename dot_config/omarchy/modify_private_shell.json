@@ -38,6 +38,9 @@ managed=$(cat <<'JSON'
           "id": "logos.keys"
         },
         {
+          "id": "logos.check"
+        },
+        {
           "id": "logos.glass"
         },
         {
@@ -45,6 +48,12 @@ managed=$(cat <<'JSON'
         },
         {
           "id": "omarchy.bluetooth"
+        },
+        {
+          "exec": "~/.local/bin/rack-route",
+          "id": "rack-route",
+          "interval": 10,
+          "type": "command"
         },
         {
           "id": "omarchy.network"
@@ -65,6 +74,9 @@ managed=$(cat <<'JSON'
         }
       ],
       "centerEnd": [
+        {
+          "id": "logos.today"
+        },
         {
           "id": "omarchy.elsewhen",
           "cities": [

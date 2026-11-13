@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "generated": 1794567600,
+  "reminders": {
+    "at": 1794567600,
+    "error": "",
+    "items": [
+      {"title": "<img src=https://example.invalid/x>", "due": "2026-01-02", "description": "<b>bold</b> <a href='https://example.invalid/'>link</a>"},
+      {"title": "Water the plants", "due": "2026-01-03", "description": "Plain example"}
+    ],
+    "timers": [{"title": "<i>Tea</i>", "due": "14:30"}],
+    "later": 2,
+    "undated": 1
+  },
+  "ado": {
+    "at": 1794567600,
+    "error": "<img src=https://example.invalid/e>",
+    "enabled": true,
+    "items": [
+      {"kind": "pr", "title": "Update dependency <img src=https://example.invalid/x> to v2", "where": "example-repo !1", "url": "https://dev.azure.com/example-org/example-project/_git/example-repo/pullrequest/1"},
+      {"kind": "pr", "title": "Wrong host", "where": "example-repo !2", "url": "https://dev.azure.com.example.invalid/x"},
+      {"kind": "pr", "title": "Quote", "where": "example-repo !3", "url": "https://dev.azure.com/x'; touch /tmp/pwned; '"},
+      {"kind": "approval", "title": "Example release", "where": "20260102.1", "url": "javascript:alert(1)"}
+    ]
+  },
+  "calendar": {
+    "at": 1794567600,
+    "error": "",
+    "next": {"start": "2026-01-02T14:00", "end": "2026-01-02T15:00", "title": "<h1>Example meeting</h1> @ <img src=https://example.invalid/room>"}
+  },
+  "kit": {"at": 1794567600, "error": "", "recovery": 9, "personal": 3, "stale": true}
+}

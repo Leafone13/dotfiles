@@ -1,0 +1,17 @@
+{
+  "title": "Today",
+  "updated": "updated %1",
+  "stale": "no fresh data since %1",
+  "noData": "No data yet: the collector has not run",
+  "reminders": "Reminders",
+  "reminders.none": "Nothing due",
+  "reminders.rest": "Later: %1 · without a date: %2",
+  "waiting": "Waiting on me",
+  "waiting.none": "Nothing waiting",
+  "waiting.off": "Polling is off",
+  "waiting.approval": "Approval",
+  "meeting": "Next meeting",
+  "meeting.none": "Nothing in the next 7 days",
+  "kit": "Backup kits",
+  "kit.ages": "Work: %1 d · personal: %2 d"
+}

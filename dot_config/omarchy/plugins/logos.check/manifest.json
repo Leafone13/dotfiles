@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.check",
+  "name": "Check",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Bar button: type a code, see the read-only check a local command prints for it",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Check",
+    "description": "Type a code, see the result of a local read-only check",
+    "category": "Launcher",
+    "allowMultiple": false
+  }
+}

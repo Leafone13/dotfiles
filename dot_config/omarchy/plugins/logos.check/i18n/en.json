@@ -1,0 +1,12 @@
+{
+  "tooltip": "Check",
+  "input.placeholder": "Code or all",
+  "run": "Check",
+  "running": "Checking...",
+  "error.invalid": "Letters, digits and dashes only, at most 12",
+  "error.failed": "The check command gave no readable answer",
+  "state.ok": "ok",
+  "state.warn": "warn",
+  "state.bad": "bad",
+  "state.unknown": "?"
+}
