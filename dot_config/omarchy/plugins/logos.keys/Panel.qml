@@ -15,7 +15,6 @@ Panel {
 
   property var list: null
   property string query: ""
-  property string copied: ""
   property string errorKey: ""
 
   readonly property var shown: list ? Logic.filter(list.groups, query) : []
@@ -32,9 +31,7 @@ Panel {
   onOpenedChanged: {
     if (!opened) return
     query = ""
-    copied = ""
     errorKey = ""
-    closeTimer.stop()
     if (!listProc.running) listProc.running = true
   }
 
@@ -43,9 +40,7 @@ Panel {
   function copy(title) {
     if (copyProc.running || title === "" || !list) return
     if (!list.groups.some(function(group) { return group.items.indexOf(title) >= 0 })) return
-    copied = ""
     errorKey = ""
-    copyProc.title = title
     copyProc.command = ["bash", "-c", 'exec timeout 30 "$HOME/.local/bin/keys" --copy "$1"', "bash", title]
     copyProc.running = true
   }
@@ -66,16 +61,11 @@ Panel {
 
   Process {
     id: copyProc
-    property string title: ""
     onExited: function(exitCode) {
       if (exitCode !== 0) { root.errorKey = "error.copy"; return }
-      root.copied = title
-      closeTimer.restart()
+      root.close()  // the paste goes elsewhere; the command's own notification confirms the copy
     }
   }
-
-  // Long enough to read the line, then out of the way: the paste goes elsewhere.
-  Timer { id: closeTimer; interval: 1500; onTriggered: root.close() }
 
   BarIconButton {
     id: button
@@ -150,14 +140,12 @@ Panel {
             width: column.width
             wrapMode: Text.Wrap
             maximumLineCount: 3
-            text: root.copied !== "" ? strings.t("copied").arg(root.copied).arg(root.list ? root.list.clearAfter : 0)
-              : root.errorKey !== "" ? strings.t(root.errorKey)
+            text: root.errorKey !== "" ? strings.t(root.errorKey)
               : !root.list ? strings.t("loading")
               : root.shown.length === 0 ? strings.t("none") : ""
-            color: root.errorKey !== "" && root.copied === "" ? Commons.Color.urgent : root.foreground
+            color: root.errorKey !== "" ? Commons.Color.urgent : root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
-            font.bold: root.copied !== ""
           }
 
           Repeater {
