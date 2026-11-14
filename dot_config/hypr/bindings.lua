@@ -45,9 +45,23 @@ hl.unbind("SUPER + ALT + K")
 o.bind("SUPER + ALT + K", "Tmux cheatsheet", os.getenv("HOME") .. "/.local/bin/tmux-cheatsheet")
 -- Same cheatsheet fullscreen in the Launchpad style (logos.cheatsheet plugin).
 -- code:49 is the grave/tilde key, so it also works on the Russian layout (ё).
-o.bind("CTRL + SHIFT + code:49", "Tmux cheatsheet (fullscreen)", "omarchy-shell shell toggle logos.cheatsheet")
+o.bind("SUPER + CTRL + code:49", "Tmux cheatsheet (fullscreen)", "omarchy-shell shell toggle logos.cheatsheet")
 -- Launchpad from the keyboard too (the pinch needs the touchpad). dont_inhibit:
 -- the open Launchpad inhibits binds, and this one must also close it.
+hl.unbind("SUPER + grave") -- was: Toggle Quake console (Omarchy 4.5), fired together with the Launchpad
+hl.unbind("SUPER + SHIFT + grave") -- was: Move window to Quake console
+-- Quake console on trial (2026-11-14), on the key it has in Jedi Academy.
+o.bind("CTRL + SHIFT + code:49", "Toggle Quake console", hl.dsp.workspace.toggle_special("qconsole"))
+-- The console seeds itself with `omarchy-agent` (default/hypr/qconsole.lua), which hardcodes
+-- `claude --permission-mode auto`; start plain claude there instead, so it asks as usual.
+-- shortcut: matches that exact command string, so an Omarchy update that changes it brings auto back; recheck after updates.
+local exec_cmd = hl.exec_cmd
+hl.exec_cmd = function(cmd, rules)
+  if cmd == "omarchy-agent" then
+    cmd = "bash -c 'cd ~/Work && exec omarchy-launch-tui --app-id=org.omarchy.agent claude'"
+  end
+  return exec_cmd(cmd, rules)
+end
 hl.bind("SUPER + code:49", hl.dsp.exec_cmd("omarchy-shell shell toggle logos.launchpad"), { description = "Launchpad", dont_inhibit = true })
 
 -- Hotel AnyDesk picker (~/.local/bin/hotel) (SUPER+SHIFT+A was: ChatGPT)
