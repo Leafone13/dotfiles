@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "logos.breath",
+  "name": "Breath",
+  "version": "0.1.0",
+  "author": "logos",
+  "description": "Redraws the wallpaper with a slow life in it (breathing emblem, drifting sky, motes, petals, a creature), where masks for it exist",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}

@@ -114,6 +114,9 @@ managed=$(cat <<'JSON'
     },
     {
       "id": "io.voxtype.settings"
+    },
+    {
+      "id": "logos.breath"
     }
   ],
   "version": 1
