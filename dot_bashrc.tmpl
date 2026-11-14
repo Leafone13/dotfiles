@@ -43,3 +43,6 @@ alias Anyre="$HOME/.local/bin/anydesk-reset"
 # fzf from mise has no /usr/share/fzf files; load its bash integration directly
 command -v fzf &>/dev/null && eval "$(fzf --bash)"
 {{- end }}
+
+# Claude Code drops to 256 colours inside tmux unless told otherwise; tmux here passes RGB
+export CLAUDE_CODE_TMUX_TRUECOLOR=1
