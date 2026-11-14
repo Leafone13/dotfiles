@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "id": "logos.keys",
   "name": "Keys",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "logos",
-  "description": "Bar button: pick a keyring secret and copy it",
+  "description": "Bar button: a panel that lists what a local command offers and has it copy the picked one",
   "kinds": [
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "BarWidget.qml"
+    "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Keys",
-    "description": "Pick a keyring secret and copy it",
+    "description": "Pick a title from a local command's list; the command copies it",
     "category": "Launcher",
     "allowMultiple": false
   }

@@ -1,0 +1,9 @@
+{
+  "tooltip": "Keys",
+  "filter.placeholder": "Type to filter, Enter copies the marked one",
+  "loading": "Loading...",
+  "none": "Nothing matches",
+  "copied": "Copied: %1. The clipboard clears in %2 s",
+  "error.list": "The keys command gave no readable list",
+  "error.copy": "Not copied: the keys command failed"
+}
