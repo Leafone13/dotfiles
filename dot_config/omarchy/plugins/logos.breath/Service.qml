@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
+import qs.Commons
 
 // A wallpaper comes alive when ~/.local/share/elune-breath/<its file name>.mask.png exists (made by
 // mask.sh, with .life.png for a creature and .petals.png for falling petals beside it). This layer then
@@ -30,6 +31,7 @@ Item {
   property real breath: 0
   property real wave: 2
   property real t: 0
+  property int ticks: 0
   property real owl: 0
   property real blink: 0
   property string wallpaper: ""
@@ -38,6 +40,17 @@ Item {
   readonly property bool masked: probe.status === Image.Ready
   readonly property string home: Quickshell.env("HOME")
   readonly property bool fullscreen: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.hasFullscreen : false
+
+  // for ~/.local/bin/breath-check, which tells a quiet wallpaper from a dead one
+  ShellIpc {
+    target: "logos.breath"
+    function state(): string {
+      var drawn = 0  // screens whose picture is loaded and on show
+      for (var panel of screens.instances) if (panel.drawing) drawn += 1
+      return JSON.stringify({ wallpaper: root.wallpaper, masked: root.masked, drawn: drawn, ticks: root.ticks,
+                              paused: root.fullscreen ? "fullscreen" : root.unseen ? "unseen" : "" })
+    }
+  }
 
   Image { id: probe; source: root.maskUrl; visible: false }
 
@@ -81,6 +94,7 @@ Item {
       // leaves the foot as an inhale begins and takes a breath and a half to reach the crown
       root.wave = (now % (root.period * root.waveEvery)) / (root.period * 1.5)
       root.t = now % 3600
+      root.ticks += 1
       root.owl = 0.5 - 0.5 * Math.cos(2 * Math.PI * (now % root.owlPeriod) / root.owlPeriod)
       // a third of a second, in the slots a fixed scramble of the slot's number picks
       var slot = Date.now() / 1000 / root.blinkEvery, into = (slot % 1) * root.blinkEvery / 0.33
@@ -90,11 +104,13 @@ Item {
   }
 
   Variants {
+    id: screens
     model: Quickshell.screens
     PanelWindow {
       required property var modelData
       screen: modelData
       visible: root.masked
+      readonly property bool drawing: visible && artImage.status === Image.Ready && light.status !== ShaderEffect.Error
       anchors { top: true; bottom: true; left: true; right: true }
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
@@ -119,6 +135,7 @@ Item {
         sourceSize: Qt.size(Math.ceil(parent.width * screen.devicePixelRatio), Math.ceil(parent.height * screen.devicePixelRatio))
       }
       ShaderEffect {
+        id: light
         // covers the screen the way the wallpaper does (aspect crop, centred)
         readonly property real fit: Math.max(parent.width / Math.max(1, maskImage.implicitWidth), parent.height / Math.max(1, maskImage.implicitHeight))
         width: maskImage.implicitWidth * fit; height: maskImage.implicitHeight * fit

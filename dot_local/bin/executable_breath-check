@@ -1,0 +1,28 @@
+#!/bin/bash
+# Is the live wallpaper (shell plugin logos.breath) alive? Its effects are made to go unnoticed, so
+# its death would go unnoticed too: this says so. Run by hand, or with --notify from the Omarchy
+# post-boot and post-update hooks (silent unless something is wrong).
+notify=; [[ ${1:-} == --notify ]] && notify=1
+say() { echo "$1"; }
+bad() {
+  echo "breath: $1" >&2
+  [[ $notify ]] && omarchy-notification-send -u critical "Live wallpaper is not running" "$1  (breath-check)"
+  exit 1
+}
+state() { omarchy-shell logos.breath state 2>/dev/null; }
+
+wallpaper=$(owe status 2>/dev/null | jq -r '.source_path // empty')
+[[ -n $wallpaper ]] || bad "the wallpaper daemon gives no wallpaper path (owe status)"
+mask=~/.local/share/elune-breath/$(basename "$wallpaper").mask.png
+[[ -f $mask ]] || { say "ok: $(basename "$wallpaper") has no mask, nothing to animate"; exit 0; }
+
+one=$(state) || bad "the shell does not answer for the plugin: not loaded, or not enabled in shell.json"
+[[ $(jq -r .masked <<<"$one") == true ]] || bad "the plugin did not load the mask for $(basename "$wallpaper")"
+paused=$(jq -r .paused <<<"$one")
+[[ -z $paused ]] || { say "ok: paused ($paused)"; exit 0; }
+(( $(jq -r .drawn <<<"$one") > 0 )) || bad "the plugin is loaded but draws on no screen (picture or shader failed to load)"
+hyprctl layers | grep -q logos-breath || bad "the plugin says it draws, but Hyprland has no logos-breath layer"
+sleep 1.5
+two=$(state) || bad "the shell stopped answering for the plugin"
+[[ -n $(jq -r .paused <<<"$two") ]] || (( $(jq -r .ticks <<<"$two") > $(jq -r .ticks <<<"$one") )) || bad "the layer is up but its clock stands still"
+say "ok: $(basename "$wallpaper") is alive ($(( $(jq -r .ticks <<<"$two") - $(jq -r .ticks <<<"$one") )) frames in 1.5 s)"
