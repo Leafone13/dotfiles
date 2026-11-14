@@ -2,6 +2,8 @@
   "tooltip": "Check",
   "input.placeholder": "Code or all",
   "run": "Check",
+  "all": "All",
+  "intercom": "Intercom calls",
   "running": "Checking...",
   "error.invalid": "Letters, digits and dashes only, at most 12",
   "error.failed": "The check command gave no readable answer",

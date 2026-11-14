@@ -6,7 +6,8 @@
     "error": "",
     "items": [
       {"title": "<img src=https://example.invalid/x>", "due": "2026-01-02", "description": "<b>bold</b> <a href='https://example.invalid/'>link</a>"},
-      {"title": "Water the plants", "due": "2026-01-03", "description": "Plain example"}
+      {"title": "Water the plants", "due": "2026-01-03", "description": "Plain example", "stem": "remind-water-plants"},
+      {"title": "Bad stem", "due": "2026-01-04", "description": "", "stem": "x'; touch /tmp/pwned; '"}
     ],
     "timers": [{"title": "<i>Tea</i>", "due": "14:30"}],
     "later": 2,
@@ -20,7 +21,21 @@
       {"kind": "pr", "title": "Update dependency <img src=https://example.invalid/x> to v2", "where": "example-repo !1", "url": "https://dev.azure.com/example-org/example-project/_git/example-repo/pullrequest/1"},
       {"kind": "pr", "title": "Wrong host", "where": "example-repo !2", "url": "https://dev.azure.com.example.invalid/x"},
       {"kind": "pr", "title": "Quote", "where": "example-repo !3", "url": "https://dev.azure.com/x'; touch /tmp/pwned; '"},
-      {"kind": "approval", "title": "Example release", "where": "20260102.1", "url": "javascript:alert(1)"}
+      {"kind": "approval", "title": "Example release", "where": "20260102.1", "url": "javascript:alert(1)"},
+      {"kind": "pr", "title": "Ticket link in the wrong section", "where": "example-repo !4", "url": "http://tracker.example.invalid:8090/example-space/browse/EX-1/"}
+    ]
+  },
+  "plane": {
+    "at": 1794567600,
+    "error": "",
+    "total": 9,
+    "hidden": 3,
+    "items": [
+      {"id": "EX-1", "title": "Example ticket <img src=https://example.invalid/x>", "state": "<b>In Progress</b>", "priority": "high", "url": "http://tracker.example.invalid:8090/example-space/browse/EX-1/"},
+      {"id": "EX-2", "title": "Quote", "state": "To-Do", "priority": "none", "url": "http://tracker.example.invalid/example-space/browse/EX-2/'; touch /tmp/pwned; '"},
+      {"id": "EX-3", "title": "Script", "state": "To-Do", "priority": "low", "url": "javascript:alert(1)"},
+      {"id": "EX-4", "title": "Userinfo", "state": "To-Do", "priority": "low", "url": "http://user@tracker.example.invalid/example-space/browse/EX-4/"},
+      {"id": "EX-5", "title": "Other page", "state": "To-Do", "priority": "low", "url": "https://tracker.example.invalid/login?next=/example-space/browse/EX-5/"}
     ]
   },
   "calendar": {

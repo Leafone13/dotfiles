@@ -17,6 +17,7 @@ Panel {
 
   readonly property string cachePath: Quickshell.env("HOME") + "/.cache/logos-today.json"
   readonly property string collector: "$HOME/.local/bin/today-collect"
+  readonly property string asker: "$HOME/.local/bin/today-ask"
 
   property var model: null
   property real now: Date.now() / 1000
@@ -37,10 +38,21 @@ Panel {
     return start.toLocaleString(Qt.locale(Commons.I18n.formatLocale), "ddd d MMM HH:mm") + " - " + next.end.slice(11, 16)
   }
 
-  // Fixed command, the address as one quoted argument, and only the one host.
+  // Fixed command, the address as one quoted argument, and only the two link shapes.
   function openUrl(url) {
-    if (!Model.isAdoUrl(url) || !root.bar) return
+    if (!(Model.isAdoUrl(url) || Model.isTicketUrl(url)) || !root.bar) return
     root.bar.run("xdg-open " + Util.shellQuote(url))
+    root.close()
+  }
+
+  // Opens a terminal where the assistant walks through one item or all of
+  // them. The prompt is built by the command; from here only a fixed word or
+  // "reminder" with a checked file stem goes out.
+  function ask(what, stem) {
+    var args = what === "kit" || what === "all" ? what
+      : what === "reminder" && Model.isStem(stem) ? "reminder " + Util.shellQuote(stem) : ""
+    if (!root.bar || args === "") return
+    root.bar.run(root.asker + " " + args)
     root.close()
   }
 
@@ -132,6 +144,12 @@ Panel {
             }
           }
 
+          Entry {
+            visible: !!root.model
+            title: strings.t("askAll")
+            ask: "all"
+          }
+
           // ---------- 1. Reminders ----------
           Header { text: strings.t("reminders") }
           Problem { text: root.model ? root.model.reminders.error : "" }
@@ -143,6 +161,8 @@ Panel {
               title: modelData.title
               side: modelData.due
               detail: modelData.description
+              ask: modelData.stem !== "" ? "reminder" : ""
+              stem: modelData.stem
             }
           }
 
@@ -214,7 +234,50 @@ Panel {
             text: strings.t(root.model && !root.model.ado.enabled ? "waiting.off" : "waiting.none")
           }
 
-          // ---------- 3. Next meeting ----------
+          // ---------- 3. Tickets ----------
+          PanelSeparator { foreground: root.bar.foreground }
+          Header { text: strings.t("plane") }
+          Problem { text: root.model ? root.model.plane.error : "" }
+
+          Label {
+            visible: !!root.model && root.model.plane.skipped
+            dim: true
+            font.pixelSize: Style.font.caption
+            text: strings.t("plane.skipped")
+          }
+
+          Repeater {
+            model: root.model ? root.model.plane.items : []
+            Entry {
+              required property var modelData
+              title: modelData.title
+              side: modelData.id
+              detail: modelData.state + (modelData.priority !== "" && modelData.priority !== "none" ? " · " + modelData.priority : "")
+              url: modelData.url
+            }
+          }
+
+          Label {
+            visible: !!root.model && root.model.plane.error === "" && root.model.plane.items.length === 0
+            dim: true
+            text: strings.t("plane.none")
+          }
+
+          Label {
+            visible: !!root.model && root.model.plane.more > 0
+            dim: true
+            font.pixelSize: Style.font.caption
+            text: root.model ? strings.t("plane.more").arg(Commons.I18n.formatNumber(root.model.plane.more)) : ""
+          }
+
+          Label {
+            visible: !!root.model && root.model.plane.hidden > 0
+            dim: true
+            font.pixelSize: Style.font.caption
+            text: root.model ? strings.t("plane.hidden").arg(Commons.I18n.formatNumber(root.model.plane.hidden)) : ""
+          }
+
+          // ---------- 4. Next meeting ----------
           PanelSeparator { foreground: root.bar.foreground }
           Header { text: strings.t("meeting") }
           Problem { text: root.model ? root.model.calendar.error : "" }
@@ -231,15 +294,17 @@ Panel {
             text: strings.t("meeting.none")
           }
 
-          // ---------- 4. Backup age ----------
+          // ---------- 5. Backup age ----------
           PanelSeparator { foreground: root.bar.foreground }
           Header { text: strings.t("kit") }
           Problem { text: root.model ? root.model.kit.error : "" }
 
-          Label {
+          // A stale kit is remade with the assistant: the row opens it.
+          Entry {
             visible: !!root.model && root.model.kit.error === ""
-            color: root.model && root.model.kit.stale ? root.bar.urgent : root.bar.foreground
-            text: root.model ? strings.t("kit.ages")
+            titleColor: root.model && root.model.kit.stale ? root.bar.urgent : root.bar.foreground
+            ask: root.model && root.model.kit.stale ? "kit" : ""
+            title: root.model ? strings.t("kit.ages")
               .arg(Commons.I18n.formatNumber(root.model.kit.recovery))
               .arg(Commons.I18n.formatNumber(root.model.kit.personal)) : ""
           }
@@ -270,13 +335,16 @@ Panel {
   }
 
   // Title with an optional right-hand note and a second, dimmer line; a row
-  // with a url opens it on click.
+  // with a url opens it on click, one with an ask word asks for a walk-through.
   component Entry: Item {
     id: entry
     property string title: ""
     property string side: ""
     property string detail: ""
     property string url: ""
+    property string ask: ""
+    property string stem: ""
+    property color titleColor: root.bar.foreground
 
     width: parent ? parent.width : 0
     implicitHeight: lines.implicitHeight
@@ -302,6 +370,7 @@ Panel {
           id: titleText
           width: parent.width - (sideText.text !== "" ? sideText.width + Style.space(10) : 0)
           text: entry.title
+          color: entry.titleColor
         }
 
         Label {
@@ -324,10 +393,10 @@ Panel {
     MouseArea {
       id: hover
       anchors.fill: parent
-      enabled: entry.url !== ""
+      enabled: entry.url !== "" || entry.ask !== ""
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onClicked: root.openUrl(entry.url)
+      onClicked: entry.url !== "" ? root.openUrl(entry.url) : root.ask(entry.ask, entry.stem)
     }
   }
 }

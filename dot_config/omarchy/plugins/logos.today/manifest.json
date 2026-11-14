@@ -4,7 +4,7 @@
   "name": "Today",
   "version": "0.1.0",
   "author": "logos",
-  "description": "Bar button with a count: due reminders, reviews waiting, next meeting, backup age",
+  "description": "Bar button with a count: due reminders, reviews waiting, open tickets, next meeting, backup age",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Today",
-    "description": "Due reminders, reviews waiting, next meeting, backup age",
+    "description": "Due reminders, reviews waiting, open tickets, next meeting, backup age",
     "category": "Launcher",
     "allowMultiple": false
   }

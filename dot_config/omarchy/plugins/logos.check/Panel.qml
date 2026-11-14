@@ -6,7 +6,8 @@ import qs.Ui
 import "Logic.js" as Logic
 
 // A bar button and a panel: type a code, see what the check command prints
-// for it. The command, and every word about what it checks, live in
+// for it; a second button asks the same command for the item's intercom
+// calls. The command and what it checks in detail live in
 // ~/.local/bin/logos-check, outside this public repo.
 Panel {
   id: root
@@ -15,6 +16,9 @@ Panel {
   property bool running: false
   property string errorKey: ""
   property var result: null
+  property string code: ""       // the validated code the result is for
+  property bool intercom: false  // the running command is the deeper check
+  property var extra: null       // its result, shown under the main one
 
   readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -32,17 +36,20 @@ Panel {
     return root.foreground
   }
 
-  function run(text) {
+  function run(text, intercom) {
     if (proc.running) return
     var code = String(text).trim()
-    result = null
+    extra = null
+    if (!intercom) result = null
     if (!Logic.validCode(code)) { errorKey = "error.invalid"; return }
     errorKey = ""
     running = true
+    root.intercom = !!intercom
+    if (!intercom) root.code = code
     // The code only ever lands in "$1", which bash expands without reading it
     // as shell. bash rather than the command itself, so a missing command
     // still ends as a process that exits and reports through stdout below.
-    proc.command = ["bash", "-c", 'exec timeout 120 "$HOME/.local/bin/logos-check" --json -- "$1"', "bash", code]
+    proc.command = ["bash", "-c", 'exec timeout 120 "$HOME/.local/bin/logos-check" --json ' + (intercom ? "--intercom " : "") + '-- "$1"', "bash", code]
     proc.running = true
   }
 
@@ -51,8 +58,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        root.result = Logic.parse(text)
-        root.errorKey = root.result ? "" : "error.failed"
+        var parsed = Logic.parse(text)
+        if (root.intercom) root.extra = parsed
+        else root.result = parsed
+        root.errorKey = parsed ? "" : "error.failed"
         root.running = false
       }
     }
@@ -129,6 +138,14 @@ Panel {
               fontFamily: root.fontFamily
               onClicked: root.run(field.text)
             }
+
+            Button {
+              text: strings.t("all")
+              bordered: true
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              onClicked: root.run("all")
+            }
           }
 
           Text {
@@ -171,15 +188,32 @@ Panel {
             font.bold: true
           }
 
-          Text {
-            visible: root.result !== null
-            width: column.width
-            textFormat: Text.PlainText
-            text: root.result ? root.result.hint : ""
-            wrapMode: Text.Wrap
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+          Button {
+            visible: Logic.single(root.code, root.result)
+            text: strings.t("intercom")
+            bordered: true
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.run(root.code, true)
+          }
+
+          Repeater {
+            model: Logic.flat(root.extra)
+
+            ResultLine {
+              required property var modelData
+              width: column.width
+              label: modelData.label
+              stateText: strings.t("state." + modelData.state)
+              detail: modelData.detail
+              tint: root.tint(modelData.state)
+              dim: root.dim
+              fontFamily: root.fontFamily
+              fontSize: Style.font.body
+              labelWidth: Style.space(80)
+              stateWidth: Style.space(40)
+              spacing: Style.space(8)
+            }
           }
         }
       }

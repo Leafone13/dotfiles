@@ -67,6 +67,28 @@ Item {
       compare(result.lines[0].detail.length, 400)
     }
 
+    function test_single_and_flat() {
+      var result = Logic.parse(fixture)
+      verify(Logic.single("ABC", result))
+      verify(!Logic.single("all", result))
+      verify(!Logic.single("ALL", result))
+      verify(!Logic.single("--json", result))
+      verify(!Logic.single("ABC", null))
+      verify(!Logic.single("ABC", Logic.parse("{\"lines\": []}")))
+      compare(Logic.flat(null).length, 0)
+      var lines = Logic.flat(result)
+      compare(lines.length, 4)
+      // the verdict goes through the same plain-text line as the rest; the hint is not shown
+      compare(lines[3].detail, markup)
+      compare(lines[3].state, "unknown")
+      var failed = Logic.flat(Logic.parse("{\"lines\": [], \"verdict\": \"no\", \"hint\": \"unknown\"}"))
+      compare(failed.length, 1)
+      compare(failed[0].detail, "no")
+      line.detail = lines[3].detail
+      compare(line.children[2].textFormat, Text.PlainText)
+      compare(line.children[2].text, markup)
+    }
+
     function test_code_validation() {
       var good = ["all", "ABC", "a-1", "A23456789012"]
       var bad = ["", "-h", "--json", "a b", "a;id", "$(id)", "`id`", "a'b", "<b>", "A234567890123", "a\nb"]

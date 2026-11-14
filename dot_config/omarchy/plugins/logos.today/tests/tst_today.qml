@@ -4,8 +4,8 @@ import "../Model.js" as Model
 import ".."
 
 // Run with tests/run.sh. Proves that markup-shaped values from the cache file
-// stay plain text, that only the one host's links survive, and that sizes are
-// bounded.
+// stay plain text, that only the review host's links and ticket-page links
+// survive (each in its own section), and that sizes are bounded.
 TestCase {
   id: test
   name: "today"
@@ -32,6 +32,7 @@ TestCase {
     model.reminders.items.forEach(take)
     model.reminders.timers.forEach(take)
     model.ado.items.forEach(take)
+    model.plane.items.forEach(take)
     take(model.calendar.next)
     out.push(model.ado.error)
     return out
@@ -40,6 +41,7 @@ TestCase {
   function test_markup_stays_plain() {
     var strings = dynamicStrings()
     verify(strings.some(function(s) { return s.indexOf("<img") >= 0 }))
+    verify(model.plane.items[0].title.indexOf("<img") >= 0 && model.plane.items[0].state.indexOf("<b>") === 0)
     strings.forEach(function(s) {
       var item = plain.createObject(test, { text: s })
       compare(item.textFormat, Text.PlainText)
@@ -60,7 +62,7 @@ TestCase {
 
   function test_only_ado_links() {
     var urls = model.ado.items.map(function(i) { return i.url })
-    compare(urls, ["https://dev.azure.com/example-org/example-project/_git/example-repo/pullrequest/1", "", "", ""])
+    compare(urls, ["https://dev.azure.com/example-org/example-project/_git/example-repo/pullrequest/1", "", "", "", ""])
     verify(!Model.isAdoUrl("http://dev.azure.com/x"))
     verify(!Model.isAdoUrl("https://dev.azure.com"))
     verify(!Model.isAdoUrl("https://dev.azure.com/a b"))
@@ -68,8 +70,55 @@ TestCase {
     verify(!Model.isAdoUrl(null))
   }
 
+  function test_only_ticket_links() {
+    compare(model.plane.items.map(function(i) { return i.url }),
+            ["http://tracker.example.invalid:8090/example-space/browse/EX-1/", "", "", "", ""])
+    compare(model.plane.more, 4)
+    compare(model.plane.hidden, 3)
+    verify(Model.isTicketUrl("https://tracker.example.invalid/example-space/browse/EX-12/"))
+    verify(!Model.isTicketUrl("file:///example-space/browse/EX-1/"))
+    verify(!Model.isTicketUrl("http://tracker.example.invalid/example-space/browse/EX-1/\n"))
+    verify(!Model.isTicketUrl("http://tracker.example.invalid/example-space/browse/EX-1/?x=1"))
+    verify(!Model.isTicketUrl("http:///example-space/browse/EX-1/"))
+    verify(!Model.isTicketUrl(null))
+  }
+
+  // A list kept from an earlier run: shown and counted, never opened; skipped is not a failure.
+  function test_stale_tickets() {
+    var data = JSON.parse(readFixture())
+    data.plane.skipped = true
+    var skipped = Model.parse(JSON.stringify(data))
+    compare(skipped.plane.items.map(function(i) { return i.url }), ["", "", "", "", ""])
+    compare(skipped.plane.items[0].title, model.plane.items[0].title)
+    compare(Model.attention(skipped), Model.attention(model))
+    data.plane.skipped = false
+    data.plane.error = "<img src=https://example.invalid/p>"
+    var failed = Model.parse(JSON.stringify(data))
+    compare(failed.plane.items[0].url, "")
+    compare(Model.attention(failed), Model.attention(model) + 1)
+    var item = plain.createObject(test, { text: failed.plane.error })
+    compare(item.text, failed.plane.error)
+    item.destroy()
+  }
+
+  // Hidden tickets never reach the file's items: the badge follows the list, not total or hidden.
+  function test_badge_counts_listed_tickets() {
+    var data = JSON.parse(readFixture())
+    data.plane.items = data.plane.items.slice(0, 2)
+    data.plane.hidden = 40
+    data.plane.total = 2
+    compare(Model.attention(Model.parse(JSON.stringify(data))), Model.attention(model) - 3)
+  }
+
+  function test_stems() {
+    compare(model.reminders.items.map(function(i) { return i.stem }), ["", "remind-water-plants", ""])
+    compare(model.reminders.timers[0].stem, "")
+    verify(!Model.isStem("../x") && !Model.isStem("a b") && !Model.isStem("A") && !Model.isStem("a\n") && !Model.isStem("") && !Model.isStem(null))
+    verify(!Model.isStem("a".repeat(101)))
+  }
+
   function test_counts() {
-    compare(Model.attention(model), 2 + 4 + 1 + 1)  // + the fixture's one failed section
+    compare(Model.attention(model), 3 + 5 + 5 + 1 + 1)  // + the fixture's one failed section
     compare(Model.attention(null), 0)
     verify(model.ado.items[3].approval)
     verify(!Model.stale(model, model.generated + 60))
@@ -87,6 +136,7 @@ TestCase {
     compare(big.reminders.later, 0)
     compare(big.generated, 0)
     compare(big.ado.items, [])
+    compare(big.plane, { error: "", skipped: false, items: [], more: 0, hidden: 0 })  // a cache file from before the tickets section
     compare(big.calendar.next, null)
     compare(big.kit.stale, false)
     compare(Model.parse("<html>"), null)
