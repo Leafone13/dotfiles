@@ -20,6 +20,7 @@ Panel {
   readonly property string asker: "$HOME/.local/bin/today-ask"
 
   property var model: null
+  property bool showHidden: false
   property real now: Date.now() / 1000
   readonly property bool stale: Model.stale(model, now)
   readonly property int attention: Model.attention(model)
@@ -270,11 +271,30 @@ Panel {
             text: root.model ? strings.t("plane.more").arg(Commons.I18n.formatNumber(root.model.plane.more)) : ""
           }
 
+          // Tickets set aside from the list above: one line that opens them, those in progress first.
           Label {
             visible: !!root.model && root.model.plane.hidden > 0
             dim: true
             font.pixelSize: Style.font.caption
-            text: root.model ? strings.t("plane.hidden").arg(Commons.I18n.formatNumber(root.model.plane.hidden)) : ""
+            text: root.model ? strings.t(root.showHidden ? "plane.hidden.open" : "plane.hidden").arg(Commons.I18n.formatNumber(root.model.plane.hidden)) : ""
+
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.showHidden = !root.showHidden
+            }
+          }
+
+          Repeater {
+            model: root.model && root.showHidden ? root.model.plane.hiddenItems : []
+            Entry {
+              required property var modelData
+              opacity: modelData.started ? 1 : 0.6
+              title: modelData.title
+              side: modelData.id
+              detail: modelData.state + (modelData.priority !== "" && modelData.priority !== "none" ? " · " + modelData.priority : "")
+              url: modelData.url
+            }
           }
 
           // ---------- 4. Next meeting ----------

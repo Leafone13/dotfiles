@@ -33,6 +33,7 @@ TestCase {
     model.reminders.timers.forEach(take)
     model.ado.items.forEach(take)
     model.plane.items.forEach(take)
+    model.plane.hiddenItems.forEach(take)
     take(model.calendar.next)
     out.push(model.ado.error)
     return out
@@ -75,6 +76,8 @@ TestCase {
             ["http://tracker.example.invalid:8090/example-space/browse/EX-1/", "", "", "", ""])
     compare(model.plane.more, 4)
     compare(model.plane.hidden, 3)
+    compare(model.plane.hiddenItems.map(function(i) { return [i.id, i.started, i.url !== ""] }),
+            [["EX-7", true, true], ["EX-8", false, false]])  // only a real true counts, and only a ticket link opens
     verify(Model.isTicketUrl("https://tracker.example.invalid/example-space/browse/EX-12/"))
     verify(!Model.isTicketUrl("file:///example-space/browse/EX-1/"))
     verify(!Model.isTicketUrl("http://tracker.example.invalid/example-space/browse/EX-1/\n"))
@@ -136,7 +139,7 @@ TestCase {
     compare(big.reminders.later, 0)
     compare(big.generated, 0)
     compare(big.ado.items, [])
-    compare(big.plane, { error: "", skipped: false, items: [], more: 0, hidden: 0 })  // a cache file from before the tickets section
+    compare(big.plane, { error: "", skipped: false, items: [], more: 0, hidden: 0, hiddenItems: [] })  // a cache file from before the tickets section
     compare(big.calendar.next, null)
     compare(big.kit.stale, false)
     compare(Model.parse("<html>"), null)

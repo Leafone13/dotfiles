@@ -4,14 +4,15 @@
 // from it is bounded and typed here before the panel shows it.
 
 var MAX_ITEMS = 20
+var MAX_HIDDEN = 50
 var MAX_TEXT = 200
 var STALE_SECONDS = 20 * 60
 
 function str(value) { return typeof value === "string" ? value.slice(0, MAX_TEXT) : "" }
 function num(value) { value = Number(value); return isFinite(value) ? Math.floor(value) : 0 }
 function obj(value) { return value && typeof value === "object" ? value : {} }
-function list(value, each) {
-  return Array.isArray(value) ? value.slice(0, MAX_ITEMS).map(function(item) { return each(obj(item)) }) : []
+function list(value, each, max) {
+  return Array.isArray(value) ? value.slice(0, max || MAX_ITEMS).map(function(item) { return each(obj(item)) }) : []
 }
 
 // The only links the panel opens: the review host, and ticket pages.
@@ -42,10 +43,11 @@ function parse(text) {
   }
   // A list kept from an earlier run (the source was skipped or failed) is shown, but its links are not opened.
   var current = plane.skipped !== true && str(plane.error) === ""
-  var tickets = list(plane.items, function(item) {
+  function ticket(item) {
     return { id: str(item.id), title: str(item.title), state: str(item.state), priority: str(item.priority),
-             url: current && isTicketUrl(item.url) ? item.url : "" }
-  })
+             url: current && isTicketUrl(item.url) ? item.url : "", started: item.started === true }
+  }
+  var tickets = list(plane.items, ticket)
   return {
     generated: num(data.generated),
     reminders: {
@@ -64,7 +66,8 @@ function parse(text) {
       })
     },
     plane: { error: str(plane.error), skipped: plane.skipped === true, items: tickets,
-             more: Math.max(0, num(plane.total) - tickets.length), hidden: Math.max(0, num(plane.hidden)) },
+             more: Math.max(0, num(plane.total) - tickets.length), hidden: Math.max(0, num(plane.hidden)),
+             hiddenItems: list(plane.hidden_items, ticket, MAX_HIDDEN) },
     calendar: {
       error: str(calendar.error),
       next: calendar.next && typeof calendar.next === "object"

@@ -30,6 +30,10 @@
     "error": "",
     "total": 9,
     "hidden": 3,
+    "hidden_items": [
+      {"id": "EX-7", "title": "Started while hidden", "state": "In Progress", "priority": "low", "url": "http://tracker.example.invalid:8090/example-space/browse/EX-7/", "started": true},
+      {"id": "EX-8", "title": "Backlog", "state": "Backlog", "priority": "none", "url": "javascript:alert(1)", "started": "yes"}
+    ],
     "items": [
       {"id": "EX-1", "title": "Example ticket <img src=https://example.invalid/x>", "state": "<b>In Progress</b>", "priority": "high", "url": "http://tracker.example.invalid:8090/example-space/browse/EX-1/"},
       {"id": "EX-2", "title": "Quote", "state": "To-Do", "priority": "none", "url": "http://tracker.example.invalid/example-space/browse/EX-2/'; touch /tmp/pwned; '"},
