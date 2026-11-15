@@ -21,7 +21,7 @@ Item {
   property real rippleLarge: 0.2    // the share of it a large bright thing takes (the moon): in full it outshone the emblem
   property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
-  property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
+  property real owlPeriod: period * 2 / 3 // the creature, if the wallpaper has one: three breaths to the tree's two, together every 13 s
   property real owlStrength: 0.006 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
   property real swayStrength: 0.003 // radians the bough turns in a gust, if the wallpaper has one: 1 px at a twig's tip
