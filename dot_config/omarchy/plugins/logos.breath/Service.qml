@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 
 // A wallpaper comes alive when ~/.local/share/elune-breath/<its file name>.mask.png exists (made by
-// mask.sh, with .life.png for a creature and .petals.png for falling petals beside it). This layer then
+// mask.sh, with .life.png for a creature, .petals.png for falling petals and .sway.png for a bough beside it). This layer then
 // redraws the whole picture over the stock wallpaper, moving. No mask, no layer.
 Item {
   id: root
@@ -22,6 +22,7 @@ Item {
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
   property real owlStrength: 0.006 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
+  property real swayStrength: 0.003 // radians the bough turns in a gust, if the wallpaper has one: 1 px at a twig's tip
   property real blinkEvery: 7      // seconds between chances to blink; it takes about half of them
   property int fps: 20
   // to see where each effect lives: echo "4 6" > ~/.local/state/logos-breath-demo makes everything
@@ -129,6 +130,7 @@ Item {
       }
       Image { id: lifeImage; visible: false; source: root.maskUrl.replace(".mask.png", ".life.png") }
       Image { id: petalImage; visible: false; source: root.maskUrl.replace(".mask.png", ".petals.png") }
+      Image { id: swayImage; visible: false; source: root.maskUrl.replace(".mask.png", ".sway.png") }
       Image {
         id: artImage
         visible: false
@@ -149,6 +151,8 @@ Item {
         property real owl: alive ? root.owl * root.owlStrength * root.demo : 0
         property real blink: alive ? root.blink : 0
         property var petals: petalImage
+        property var sway: swayImage
+        property real swayStrength: swayImage.status === Image.Ready ? root.swayStrength * root.demo : 0
         property real petalStrength: petalImage.status === Image.Ready ? Math.min(1, root.petalStrength * root.demo) : 0
         visible: artImage.status === Image.Ready
         property real breath: root.breath

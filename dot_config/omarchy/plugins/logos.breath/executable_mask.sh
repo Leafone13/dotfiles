@@ -7,21 +7,28 @@
 # and, when a creature is given, <wallpaper>.life.png:
 #   R, G = which way and how far each of its pixels moves on an inhale (grey = stays), B = its eye
 # and, when petals are given, <wallpaper>.petals.png: three of the painted petals cut out, side by side
-# Usage: mask.sh <wallpaper> <centre-x> <centre-y> <radius> [still zones] [creature] [petals]
+# and, when sway is given, <wallpaper>.sway.png: R, G = how far each pixel of a bough swings per radian
+#   (grey = stays), a small turn around the point it hangs from
+# Usage: mask.sh <wallpaper> <centre-x> <centre-y> <radius> [still zones] [creature] [petals] [sway]
 #   centre and radius: the emblem circle, in wallpaper pixels
 #   still zones: ImageMagick draw commands in mask pixels (1920x1080) for what must not move
 #   creature, in mask pixels: "feet-x feet-y  body-x body-y body-rx body-ry  eye-x eye-y eye-r";
 #     the body ellipse swells away from the feet and fades out at its rim
 #   petals: three "x,y,size" boxes around painted petals, centre and side in wallpaper pixels
-# The whole of 0-moonlight.png (still: tree + owl + hill, moon, each painted petal; the owl; three petals):
+#   sway, in mask pixels: one or more "pivot-x pivot-y  centre-x centre-y rx ry  gain": what lies in the
+#     ellipse turns around the pivot (where it hangs from the limb, never on the trunk), fading out at
+#     the rim; gain makes a short cluster swing as far as a long twig. Must sit inside a still zone.
+# The whole of 0-moonlight.png (still: tree + owl + hill, moon, each painted petal; the owl; three petals;
+# the leaf cluster and the twig of the bough on the left):
 #   ./mask.sh ~/.config/omarchy/backgrounds/elune/0-moonlight.png 1293 666 484 \
 #     "polygon 0,0 840,0 840,140 460,260 300,410 450,500 450,730 670,865 1010,1080 0,1080 circle 1600,95 1600,205 circle 418,285 418,330 circle 224,346 224,400 circle 159,496 159,540 circle 580,636 580,680 circle 1764,245 1764,325 circle 1661,437 1661,500 circle 1738,686 1738,765 circle 1524,804 1524,865 circle 1339,850 1339,915" \
 #     "367 697  335 590 105 140  397.5 520.6 7" \
-#     "2353,326,230 2214,582,170 1786,1133,150"
+#     "2353,326,230 2214,582,170 1786,1133,150" \
+#     "440 72  455 150 105 90  2   520 62  700 55 205 85  1"
 # After changing light.frag: /usr/lib/qt6/bin/qsb --qt6 -o light.frag.qsb light.frag
 # After any change here, in Service.qml or to a mask: omarchy restart shell (a running shell keeps what it loaded)
 set -euo pipefail
-src=$1 cx=$2 cy=$3 r=$4 still=${5:-} creature=${6:-} petals=${7:-}
+src=$1 cx=$2 cy=$3 r=$4 still=${5:-} creature=${6:-} petals=${7:-} sway=${8:-}
 out=~/.local/share/elune-breath/$(basename "$src").mask.png
 mkdir -p "$(dirname "$out")"
 w=$(magick identify -format %w "$src")
@@ -53,6 +60,27 @@ if [ -n "$petals" ]; then
   done
   magick "${sprites[@]}" -background none +append "${out%.mask.png}.petals.png"
   echo "${out%.mask.png}.petals.png"
+fi
+
+if [ -n "$sway" ]; then
+  # 16 bits until the end: the groups are added up, and grey must stay exactly grey where nothing moves
+  magick -size 1920x1080 -depth 16 xc:gray50 "$out.sx.png"
+  cp "$out.sx.png" "$out.sy.png"
+  set -- $sway
+  while [ $# -ge 7 ]; do
+    ax=$1 ay=$2 bx=$3 by=$4 brx=$5 bry=$6 gain=$7; shift 7
+    x0=$((bx - brx - 4)) y0=$((by - bry - 4)); x0=$((x0 < 0 ? 0 : x0)) y0=$((y0 < 0 ? 0 : y0))
+    bw=$((bx + brx + 4 - x0)) bh=$((by + bry + 4 - y0))
+    rim="ee=hypot((i+$x0-$bx)/$brx,(j+$y0-$by)/$bry); ww=ee<0.55?1:(ee>1?0:0.5+0.5*cos(pi*(ee-0.55)/0.45));"
+    # a turn moves a pixel across its arm: (x, y) from the pivot goes toward (-y, x); 800 px per radian = full scale
+    magick "$out.sx.png" \( -size ${bw}x$bh -depth 16 xc:black -fx "$rim 0.5-(j+$y0-$ay)*$gain/800*ww" \) \
+      -geometry +$x0+$y0 -compose Mathematics -define compose:args=0,1,1,-0.5 -composite "$out.sx.png"
+    magick "$out.sy.png" \( -size ${bw}x$bh -depth 16 xc:black -fx "$rim 0.5+(i+$x0-$ax)*$gain/800*ww" \) \
+      -geometry +$x0+$y0 -compose Mathematics -define compose:args=0,1,1,-0.5 -composite "$out.sy.png"
+  done
+  magick "$out.sx.png" "$out.sy.png" \( -size 1920x1080 xc:black \) -combine -alpha off -depth 8 "${out%.mask.png}.sway.png"
+  rm "$out.sx.png" "$out.sy.png"
+  echo "${out%.mask.png}.sway.png"
 fi
 
 [ -n "$creature" ] || exit 0

@@ -1,7 +1,8 @@
 #version 440
 // The wallpaper redrawn with a slow life in it: the painted sky turns around the tree, the emblem
 // breathes, a light climbs it now and then and ripples on through the scene, a few motes wander,
-// petals fall, a creature breathes and blinks. With every strength at 0 the picture comes out untouched.
+// petals fall, a bough stirs, a creature breathes and blinks. With every strength at 0 the picture
+// comes out untouched.
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
@@ -19,11 +20,13 @@ layout(std140, binding = 0) uniform buf {
     float petalStrength; // opacity of the falling petals, 0 when the wallpaper has none
     float rippleStrength; // how much brighter the painting's own lights get as the wave passes them
     float moteDepth;     // the far and near planes of motes beside the middle one, 0 = one plane only
+    float swayStrength;  // radians a bough turns at the height of a gust, 0 when the wallpaper has none
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
 layout(binding = 2) uniform sampler2D art;   // the wallpaper itself
 layout(binding = 3) uniform sampler2D life;  // a creature: R, G where its pixels go on an inhale, B its eye
 layout(binding = 4) uniform sampler2D petals; // three petals cut from the painting, side by side
+layout(binding = 5) uniform sampler2D sway;  // a bough: R, G where its pixels go per radian of turn
 
 const float TAU = 6.2831853;
 
@@ -67,6 +70,12 @@ void main() {
     // It sits in a still zone, so the drift above is zero here and the two never fight.
     vec3 l = texture(life, qt_TexCoord0).rgb;
     vec2 at = qt_TexCoord0 - (l.rg - 127.0 / 255.0) * 400.0 * owl / vec2(1920.0, 1080.0);
+    // a bough stirs: a small turn around the point it hangs from, the tips a little behind the base, in
+    // gusts that come every minute and a half and leave it nearly at rest between them
+    vec2 arm = (texture(sway, qt_TexCoord0).rg - 127.0 / 255.0) * 800.0;
+    float lag = length(arm) / 150.0;
+    at -= arm * swayStrength * (0.3 + 0.7 * (0.5 + 0.5 * sin(turn * 40.0)))
+          * (0.6 * sin(turn * 450.0 - lag) + 0.4 * sin(turn * 277.0 - 1.7 * lag + 1.0)) / vec2(1920.0, 1080.0);
     vec3 c = mix(texture(art, at - reach * (p2 - 0.5)).rgb,
                  texture(art, at - reach * (p1 - 0.5)).rgb, 1.0 - abs(2.0 * p1 - 1.0));
     // a blink paints the eye over with the feathers beside it
