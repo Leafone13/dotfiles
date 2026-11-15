@@ -15,6 +15,7 @@ Item {
   property real strength: 0.1  // peak opacity of the breath
   property real waveEvery: 4       // breaths between two lights climbing the tree
   property real waveStrength: 0.35
+  property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
@@ -153,6 +154,7 @@ Item {
         property real strength: root.strength * root.demo
         property real wave: root.wave
         property real waveStrength: root.waveStrength * root.demo
+        property real rippleStrength: root.rippleStrength * root.demo
         property real t: root.t
         property real mistStrength: root.mistStrength * root.demo
         property real moteStrength: root.moteStrength * root.demo

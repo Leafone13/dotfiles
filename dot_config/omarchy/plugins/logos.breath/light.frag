@@ -1,7 +1,7 @@
 #version 440
 // The wallpaper redrawn with a slow life in it: the painted sky turns around the tree, the emblem
-// breathes, a light climbs it now and then, a few motes wander, petals fall, a creature breathes and
-// blinks. With every strength at 0 the picture comes out untouched.
+// breathes, a light climbs it now and then and ripples on through the scene, a few motes wander,
+// petals fall, a creature breathes and blinks. With every strength at 0 the picture comes out untouched.
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
@@ -17,6 +17,7 @@ layout(std140, binding = 0) uniform buf {
     float owl;           // 0 = exhaled, 1 = inhaled; times how far the body swells, 0 when there is no creature
     float blink;         // 0 = eye open, 1 = shut
     float petalStrength; // opacity of the falling petals, 0 when the wallpaper has none
+    float rippleStrength; // how much brighter the painting's own lights get as the wave passes them
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
 layout(binding = 2) uniform sampler2D art;   // the wallpaper itself
@@ -75,6 +76,16 @@ void main() {
             c = c * (1.0 - petal.a) + petal.rgb;
         }
     }
+
+    // the ripple: the light that climbed the tree travels on past the crown, and whatever the painting
+    // already lit (owl, leaves, flowers, at last the moon) answers in its own colour, later the farther
+    // it is from the foot. Not the emblem (the wave has it), not the corners beyond the mask's reach.
+    float lit = smoothstep(0.45, 0.85, dot(c, vec3(0.299, 0.587, 0.114))) * (1.0 - smoothstep(0.02, 0.25, m.r))
+                * (1.0 - smoothstep(0.93, 1.0, m.g));
+    float lift = lit * smoothstep(0.12, 0.0, abs(m.g - wave * 0.62))
+                 * smoothstep(0.5, 0.9, wave) * (1.0 - smoothstep(1.45, 1.7, wave)) * rippleStrength;
+    c *= 1.0 + lift;
+    c += (hash(gl_FragCoord.yx) - 0.5) / 255.0 * step(0.0005, lift);  // dither, as for the light below
 
     float a = m.r * strength * breath;
 
