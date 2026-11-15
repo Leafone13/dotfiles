@@ -21,6 +21,7 @@ layout(std140, binding = 0) uniform buf {
     float rippleStrength; // how much brighter the painting's own lights get as the wave passes them
     float moteDepth;     // the far and near planes of motes beside the middle one, 0 = one plane only
     float swayStrength;  // radians a bough turns at the height of a gust, 0 when the wallpaper has none
+    float creatureRipple; // the share of the ripple the creature takes, 1 when the wallpaper has none
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
 layout(binding = 2) uniform sampler2D art;   // the wallpaper itself
@@ -105,7 +106,9 @@ void main() {
     // already lit (owl, leaves, flowers, at last the moon) answers in its own colour, later the farther
     // it is from the foot. Not the emblem (the wave has it), not the corners beyond the mask's reach.
     float lit = smoothstep(0.45, 0.85, dot(c, vec3(0.299, 0.587, 0.114))) * (1.0 - smoothstep(0.02, 0.25, m.r))
-                * (1.0 - smoothstep(0.93, 1.0, m.g));
+                * (1.0 - smoothstep(0.93, 1.0, m.g))
+                // the creature is the largest bright thing near the tree: lit in full it flares
+                * mix(1.0, creatureRipple, smoothstep(0.0, 0.03, length(l.rg - 127.0 / 255.0)));
     float lift = lit * smoothstep(0.12, 0.0, abs(m.g - wave * 0.62))
                  * smoothstep(0.5, 0.9, wave) * (1.0 - smoothstep(1.45, 1.7, wave)) * rippleStrength;
     c *= 1.0 + lift;

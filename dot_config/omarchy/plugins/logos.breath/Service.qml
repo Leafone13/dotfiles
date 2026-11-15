@@ -17,6 +17,7 @@ Item {
   property real waveStrength: 0.35
   property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
+  property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
   property real moteDepth: 1       // the far (small, slow) and near (large, soft) motes beside the middle plane; 0 = one plane
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
@@ -150,6 +151,7 @@ Item {
         readonly property bool alive: lifeImage.status === Image.Ready
         property real owl: alive ? root.owl * root.owlStrength * root.demo : 0
         property real blink: alive ? root.blink : 0
+        property real creatureRipple: alive ? root.creatureRipple : 1
         property var petals: petalImage
         property var sway: swayImage
         property real swayStrength: swayImage.status === Image.Ready ? root.swayStrength * root.demo : 0
