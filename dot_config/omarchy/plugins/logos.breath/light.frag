@@ -8,7 +8,7 @@ layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    float breath;        // 0 = the painting as it is, 1 = full inhale
+    float breathPhase;   // 0..1 through one breath: the painting as it is at 0, full inhale at 0.5
     float strength;      // peak opacity of the breath
     float wave;          // 0..1 = a light on its way from the foot to the crown, above 1 = none
     float waveStrength;
@@ -19,9 +19,9 @@ layout(std140, binding = 0) uniform buf {
     float blink;         // 0 = eye open, 1 = shut
     float petalStrength; // opacity of the falling petals, 0 when the wallpaper has none
     float rippleStrength; // how much brighter the painting's own lights get as the wave passes them
-    float moteDepth;     // the far and near planes of motes beside the middle one, 0 = one plane only
     float swayStrength;  // radians a bough turns at the height of a gust, 0 when the wallpaper has none
     float creatureRipple; // the share of the ripple the creature takes, 1 when the wallpaper has none
+    float haloLag;       // how far behind the lines the faintest halo breathes, as a share of a breath
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
 layout(binding = 2) uniform sampler2D art;   // the wallpaper itself
@@ -37,20 +37,6 @@ float noise(vec2 p) {
     vec2 i = floor(p), f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
-}
-
-// one plane of motes: at most one per cell, each wandering around its own spot and fading in and out.
-// A mote must stay inside its cell (roam / 2 + wander + its glow < size / 2) or it is cut at the border.
-// k = whole cycles per hour, so nothing jumps when t wraps.
-float motes(vec2 px, float turn, float size, float seed, float share, float roam, float wander, float kMin, float kSpan, float r2) {
-    vec2 cell = floor(px / size), h = cell + seed;
-    if (hash(h) >= share) return 0.0;
-    vec2 spot = (cell + 0.5) * size + (vec2(hash(h + 3.1), hash(h + 7.7)) - 0.5) * roam;
-    float k = floor(kMin + kSpan * hash(h + 1.3));
-    float ph = TAU * hash(h + 5.9);
-    spot += wander * vec2(sin(turn * k + ph), cos(turn * (k + 13.0) + ph * 1.7));
-    float d = length(px - spot);
-    return (exp(-d * d / r2) + 0.25 * exp(-d * d / (r2 * 8.9))) * (0.5 + 0.5 * sin(turn * (k * 3.0 + 7.0) + ph * 2.3));
 }
 
 void main() {
@@ -114,17 +100,26 @@ void main() {
     c *= 1.0 + lift;
     c += (hash(gl_FragCoord.yx) - 0.5) / 255.0 * step(0.0005, lift);  // dither, as for the light below
 
-    float a = m.r * strength * breath;
+    // the breath starts in the lines and spreads out through the halo: the fainter the glow, the later
+    // it follows, so the light has a body and not one flat pulse
+    float a = m.r * strength * (0.5 - 0.5 * cos(TAU * (breathPhase - haloLag * (1.0 - m.r))));
 
     // a soft band of light climbing away from the foot, only on the lines themselves (r squared drops the halo)
     float band = smoothstep(0.09, 0.0, abs(m.g - wave * 0.62));
     a += m.r * m.r * band * sin(3.14159 * clamp(wave, 0.0, 1.0)) * waveStrength;
 
-    // motes in three planes, for depth in the air: the middle one (40 to 90 s a round), many small dim
-    // slow ones far away, and a few large soft ones up close, out of focus
-    a += (motes(px, turn, 240.0, 0.0, 0.4, 130.0, 38.0, 40.0, 50.0, 4.5)
-          + moteDepth * (0.45 * motes(px, turn, 150.0, 17.0, 0.35, 80.0, 14.0, 20.0, 25.0, 1.2)
-                         + 0.28 * motes(px, turn, 640.0, 41.0, 0.5, 300.0, 90.0, 30.0, 30.0, 110.0))) * moteStrength;
+    // motes: at most one per 240 px cell, each wandering around its own spot and fading in and out
+    vec2 cell = floor(px / 240.0);
+    float id = hash(cell);
+    if (id < 0.4) {
+        vec2 spot = (cell + 0.5) * 240.0 + (vec2(hash(cell + 3.1), hash(cell + 7.7)) - 0.5) * 130.0;
+        float k = floor(40.0 + 50.0 * hash(cell + 1.3));  // whole cycles per hour, so 40 to 90 s each
+        float ph = TAU * hash(cell + 5.9);
+        spot += 38.0 * vec2(sin(turn * k + ph), cos(turn * (k + 13.0) + ph * 1.7));
+        float d = length(px - spot);
+        float glow = exp(-d * d / 4.5) + 0.25 * exp(-d * d / 40.0);
+        a += glow * (0.5 + 0.5 * sin(turn * (k * 3.0 + 7.0) + ph * 2.3)) * moteStrength;
+    }
 
     // half a level of static noise, or the slow fades crawl in visible 8-bit steps
     a = clamp(a + (hash(gl_FragCoord.xy) - 0.5) / 255.0 * step(0.002, a), 0.0, 1.0);

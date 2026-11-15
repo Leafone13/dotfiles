@@ -13,13 +13,13 @@ Item {
   property var shell: null
   property real period: 6.5    // seconds per breath
   property real strength: 0.1  // peak opacity of the breath
+  property real haloLag: 0.25  // the halo follows the lines this share of a breath later (1.6 s), 0 = all at once
   property real waveEvery: 4       // breaths between two lights climbing the tree
   property real waveStrength: 0.35
   property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
   property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
-  property real moteDepth: 0       // the far (small, slow) and near (large, soft) motes beside the middle plane; 0 = one plane
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
   property real owlStrength: 0.006 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
@@ -32,7 +32,7 @@ Item {
   readonly property real demo: parseFloat(demoWords[0]) || 1
   readonly property real demoSpeed: parseFloat(demoWords[1]) || 1
 
-  property real breath: 0
+  property real breathPhase: 0
   property real wave: 2
   property real t: 0
   property int ticks: 0
@@ -94,7 +94,7 @@ Item {
     // from the clock, so a late tick never shifts the rhythm
     onTriggered: {
       var now = Date.now() / 1000 * root.demoSpeed
-      root.breath = 0.5 - 0.5 * Math.cos(2 * Math.PI * (now % root.period) / root.period)
+      root.breathPhase = (now % root.period) / root.period
       // leaves the foot as an inhale begins and takes a breath and a half to reach the crown
       root.wave = (now % (root.period * root.waveEvery)) / (root.period * 1.5)
       root.t = now % 3600
@@ -157,7 +157,8 @@ Item {
         property real swayStrength: swayImage.status === Image.Ready ? root.swayStrength * root.demo : 0
         property real petalStrength: petalImage.status === Image.Ready ? Math.min(1, root.petalStrength * root.demo) : 0
         visible: artImage.status === Image.Ready
-        property real breath: root.breath
+        property real breathPhase: root.breathPhase
+        property real haloLag: root.haloLag
         property real strength: root.strength * root.demo
         property real wave: root.wave
         property real waveStrength: root.waveStrength * root.demo
@@ -165,7 +166,6 @@ Item {
         property real t: root.t
         property real mistStrength: root.mistStrength * root.demo
         property real moteStrength: root.moteStrength * root.demo
-        property real moteDepth: root.moteDepth
         fragmentShader: Qt.resolvedUrl("light.frag.qsb")
       }
     }
