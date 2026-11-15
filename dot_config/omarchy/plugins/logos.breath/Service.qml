@@ -18,6 +18,7 @@ Item {
   property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
+  property real moteDepth: 1       // the far (small, slow) and near (large, soft) motes beside the middle plane; 0 = one plane
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
   property real owlStrength: 0.006 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
@@ -158,6 +159,7 @@ Item {
         property real t: root.t
         property real mistStrength: root.mistStrength * root.demo
         property real moteStrength: root.moteStrength * root.demo
+        property real moteDepth: root.moteDepth
         fragmentShader: Qt.resolvedUrl("light.frag.qsb")
       }
     }
