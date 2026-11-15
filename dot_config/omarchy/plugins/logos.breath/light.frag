@@ -124,7 +124,7 @@ void main() {
     // slow ones far away, and a few large soft ones up close, out of focus
     a += (motes(px, turn, 240.0, 0.0, 0.4, 130.0, 38.0, 40.0, 50.0, 4.5)
           + moteDepth * (0.45 * motes(px, turn, 150.0, 17.0, 0.35, 80.0, 14.0, 20.0, 25.0, 1.2)
-                         + 0.28 * motes(px, turn, 640.0, 41.0, 0.5, 300.0, 90.0, 30.0, 30.0, 260.0))) * moteStrength;
+                         + 0.28 * motes(px, turn, 640.0, 41.0, 0.5, 300.0, 90.0, 30.0, 30.0, 110.0))) * moteStrength;
 
     // half a level of static noise, or the slow fades crawl in visible 8-bit steps
     a = clamp(a + (hash(gl_FragCoord.xy) - 0.5) / 255.0 * step(0.002, a), 0.0, 1.0);
