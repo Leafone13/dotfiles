@@ -9,7 +9,9 @@
 # and, when petals are given, <wallpaper>.petals.png: three of the painted petals cut out, side by side
 # and, when sway is given, <wallpaper>.sway.png: R, G = how far each pixel of a bough swings per radian
 #   (grey = stays), a small turn around the point it hangs from
-# Usage: mask.sh <wallpaper> <centre-x> <centre-y> <radius> [still zones] [creature] [petals] [sway]
+# and, when near is given, <wallpaper>.depth.png: flat plates, 0 = far, 0.5 = the emblem, 0.7 = near things,
+#   rising to 1 at the bottom edge (the ground comes toward the viewer)
+# Usage: mask.sh <wallpaper> <centre-x> <centre-y> <radius> [still zones] [creature] [petals] [sway] [near]
 #   centre and radius: the emblem circle, in wallpaper pixels
 #   still zones: ImageMagick draw commands in mask pixels (1920x1080) for what must not move
 #   creature, in mask pixels: "feet-x feet-y  body-x body-y body-rx body-ry  eye-x eye-y eye-r";
@@ -18,18 +20,21 @@
 #   sway, in mask pixels: one or more "pivot-x pivot-y  centre-x centre-y rx ry  gain": what lies in the
 #     ellipse turns around the pivot (where it hangs from the limb, never on the trunk), fading out at
 #     the rim; gain makes a short cluster swing as far as a long twig. Must sit inside a still zone.
+#   near: ImageMagick draw commands in mask pixels for what stands in front of the sky. Each plate moves
+#     whole, so its edge must lie outside the painted thing, in smooth sky, 20 px or more from it.
 # Each petal's circle reaches 35 px past it: flowing sky nearer than its own travel shows the petal twice.
 # The whole of 0-moonlight.png (still: tree + owl + hill, moon, each painted petal; the owl; three petals;
-# the leaf cluster and the twig of the bough on the left):
+# the leaf cluster and the twig of the bough on the left; near: tree + owl + hill, the ground along the bottom):
 #   ./mask.sh ~/.config/omarchy/backgrounds/elune/0-moonlight.png 1293 666 484 \
 #     "polygon 0,0 840,0 840,140 460,260 300,410 450,500 450,730 670,865 1010,1080 0,1080 circle 1600,95 1600,205 circle 418,285 418,365 circle 224,346 224,436 circle 159,496 159,576 circle 580,636 580,716 circle 1764,245 1764,360 circle 1661,437 1661,535 circle 1738,686 1738,800 circle 1524,804 1524,900 circle 1339,850 1339,950" \
 #     "367 697  335 590 105 140  397.5 520.6 7" \
 #     "2353,326,230 2214,582,170 1786,1133,150" \
-#     "440 72  455 150 105 90  2   520 62  700 55 205 85  1"
+#     "440 72  455 150 105 90  2   520 62  700 55 205 85  1" \
+#     "polygon 0,0 840,0 840,140 460,260 300,410 480,480 490,730 670,865 1010,1080 0,1080 polygon 900,1080 1010,1010 1400,1030 1700,990 1920,900 1920,1080"
 # After changing light.frag: /usr/lib/qt6/bin/qsb --qt6 -o light.frag.qsb light.frag
 # After any change here, in Service.qml or to a mask: omarchy restart shell (a running shell keeps what it loaded)
 set -euo pipefail
-src=$1 cx=$2 cy=$3 r=$4 still=${5:-} creature=${6:-} petals=${7:-} sway=${8:-}
+src=$1 cx=$2 cy=$3 r=$4 still=${5:-} creature=${6:-} petals=${7:-} sway=${8:-} near=${9:-}
 out=~/.local/share/elune-breath/$(basename "$src").mask.png
 mkdir -p "$(dirname "$out")"
 w=$(magick identify -format %w "$src")
@@ -82,6 +87,15 @@ if [ -n "$sway" ]; then
   magick "$out.sx.png" "$out.sy.png" \( -size 1920x1080 xc:black \) -combine -alpha off -depth 8 "${out%.mask.png}.sway.png"
   rm "$out.sx.png" "$out.sy.png"
   echo "${out%.mask.png}.sway.png"
+fi
+
+if [ -n "$near" ]; then
+  # the plates reach 20 px past what they hold and fade over the next 40: only smooth sky stretches
+  magick \( -size 1920x1080 xc:black -fill white -draw "$near" -morphology Dilate Disk:20 -blur 0x10 \) \
+    \( -size 1920x650 xc:'gray(70%)' \( -size 1920x430 gradient:'gray(70%)-white' \) -append \) -compose multiply -composite \
+    \( -size 1920x1080 xc:black -fill gray50 -draw "circle $mx,$my $mx,$((my + mr * 117 / 100 + 20))" -blur 0x10 \) \
+    -compose lighten -composite -depth 8 "${out%.mask.png}.depth.png"
+  echo "${out%.mask.png}.depth.png"
 fi
 
 [ -n "$creature" ] || exit 0

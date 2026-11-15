@@ -23,12 +23,15 @@ layout(std140, binding = 0) uniform buf {
     float creatureRipple; // the share of the ripple the creature takes, 1 when the wallpaper has none
     float rippleLarge;   // the share of the ripple a large bright thing takes, the moon first of all
     float haloLag;       // how far behind the lines the faintest halo breathes, as a share of a breath
+    float parallax;      // mask pixels the nearest things drift as the viewer shifts their weight, 0 = none
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
 layout(binding = 2) uniform sampler2D art;   // the wallpaper itself
 layout(binding = 3) uniform sampler2D life;  // a creature: R, G where its pixels go on an inhale, B its eye
 layout(binding = 4) uniform sampler2D petals; // three petals cut from the painting, side by side
 layout(binding = 5) uniform sampler2D sway;  // a bough: R, G where its pixels go per radian of turn
+
+layout(binding = 6) uniform sampler2D depth; // R: flat plates, 0 = far (sky, moon), 0.5 = the emblem, 0.7 = the tree and the owl, up to 1 = the ground at the bottom edge
 
 const float TAU = 6.2831853;
 
@@ -41,26 +44,36 @@ float noise(vec2 p) {
 }
 
 void main() {
-    vec3 m = texture(mask, qt_TexCoord0).rgb;
-    vec2 px = qt_TexCoord0 * vec2(1920.0, 1080.0);
+    // depth: the viewer shifts their weight, mostly sideways, never twice the same way within the hour, and
+    // near things drift against far ones. The picture is flat, so each thing is a flat plate that moves whole
+    // and only the smooth sky around it stretches. Every texture is read through the same shifted point, or
+    // the light would slide off the paint.
     float turn = TAU * t / 3600.0;  // one full turn per hour
+    vec2 lean = parallax * vec2(0.6 * sin(turn * 47.0) + 0.4 * sin(turn * 29.0 + 1.3), 0.3 * sin(turn * 37.0 + 0.5));
+    // the emblem's plate (0.5) is where the eye rests and stays put: nearer things go one way, the sky the
+    // other. A thing sliding against the screen's frame reads as a moving texture, against its backdrop as depth.
+    vec2 uv = qt_TexCoord0 + (texture(depth, qt_TexCoord0).r - 0.5) * lean / vec2(1920.0, 1080.0);
+    vec3 m = texture(mask, uv).rgb;
+    vec2 px = uv * vec2(1920.0, 1080.0);
+    // what is drawn here and not painted (motes, falling petals) floats in front of everything, a true layer
+    vec2 front = qt_TexCoord0 * vec2(1920.0, 1080.0) + lean;
 
     // mist: the sky drifts along circles around the trunk's foot. Two copies of the picture, half a
     // cycle apart, each fading out before it jumps back, so the drift never ends and never resets.
     const vec2 e = vec2(40.0 / 1920.0, 40.0 / 1080.0);
-    vec2 out_ = vec2(texture(mask, qt_TexCoord0 + vec2(e.x, 0)).g - texture(mask, qt_TexCoord0 - vec2(e.x, 0)).g,
-                     texture(mask, qt_TexCoord0 + vec2(0, e.y)).g - texture(mask, qt_TexCoord0 - vec2(0, e.y)).g);
+    vec2 out_ = vec2(texture(mask, uv + vec2(e.x, 0)).g - texture(mask, uv - vec2(e.x, 0)).g,
+                     texture(mask, uv + vec2(0, e.y)).g - texture(mask, uv - vec2(0, e.y)).g);
     vec2 along = length(out_) > 0.002 ? normalize(vec2(-out_.y, out_.x)) : vec2(0.0);
     vec2 reach = along * m.b * mistStrength / vec2(1920.0, 1080.0);
     float cycle = turn * 80.0 / TAU + noise(px / 260.0);  // 45 s, out of step from place to place
     float p1 = fract(cycle), p2 = fract(cycle + 0.5);
     // the creature breathes: its body is drawn from a little nearer its feet, so it rises and swells.
     // It sits in a still zone, so the drift above is zero here and the two never fight.
-    vec3 l = texture(life, qt_TexCoord0).rgb;
-    vec2 at = qt_TexCoord0 - (l.rg - 127.0 / 255.0) * 400.0 * owl / vec2(1920.0, 1080.0);
+    vec3 l = texture(life, uv).rgb;
+    vec2 at = uv - (l.rg - 127.0 / 255.0) * 400.0 * owl / vec2(1920.0, 1080.0);
     // a bough stirs: a small turn around the point it hangs from, the tips a little behind the base, in
     // gusts that come every minute and a half and leave it nearly at rest between them
-    vec2 arm = (texture(sway, qt_TexCoord0).rg - 127.0 / 255.0) * 800.0;
+    vec2 arm = (texture(sway, uv).rg - 127.0 / 255.0) * 800.0;
     float lag = length(arm) / 150.0;
     at -= arm * swayStrength * (0.3 + 0.7 * (0.5 + 0.5 * sin(turn * 40.0)))
           * (0.6 * sin(turn * 450.0 - lag) + 0.4 * sin(turn * 277.0 - 1.7 * lag + 1.0)) / vec2(1920.0, 1080.0);
@@ -80,7 +93,7 @@ void main() {
         vec2 spot = vec2(FROM[k] + SIDEWAYS[k] * lap + 0.012 * sin(TAU * (lap * 3.0 + 0.3 * fk)), 0.10 + 0.60 * lap)
                     * vec2(1920.0, 1080.0);
         float turned = fk + 0.7 * sin(TAU * (lap * 2.0 + 0.2 * fk));
-        vec2 d = px - spot;
+        vec2 d = front - spot;
         vec2 s = vec2(cos(turned) * d.x - sin(turned) * d.y, sin(turned) * d.x + cos(turned) * d.y) / 56.0 + 0.5;
         if (s.x > 0.0 && s.x < 1.0 && s.y > 0.0 && s.y < 1.0) {
             float there = smoothstep(0.0, 0.08, lap) * (1.0 - smoothstep(0.30, 1.0, lap));
@@ -98,7 +111,7 @@ void main() {
     const vec3 LUM = vec3(0.299, 0.587, 0.114);
     float around = 0.0;
     for (int k = 0; k < 8; k++)
-        around += dot(texture(art, qt_TexCoord0 + 45.0 * vec2(cos(0.7854 * float(k)), sin(0.7854 * float(k))) / vec2(1920.0, 1080.0)).rgb, LUM);
+        around += dot(texture(art, uv + 45.0 * vec2(cos(0.7854 * float(k)), sin(0.7854 * float(k))) / vec2(1920.0, 1080.0)).rgb, LUM);
     float lit = smoothstep(0.45, 0.85, dot(c, LUM)) * (1.0 - smoothstep(0.02, 0.25, m.r))
                 * (1.0 - smoothstep(0.93, 1.0, m.g))
                 * mix(1.0, rippleLarge, smoothstep(0.25, 0.5, around / 8.0))
@@ -118,14 +131,14 @@ void main() {
     a += m.r * m.r * band * sin(3.14159 * clamp(wave, 0.0, 1.0)) * waveStrength;
 
     // motes: at most one per 240 px cell, each wandering around its own spot and fading in and out
-    vec2 cell = floor(px / 240.0);
+    vec2 cell = floor(front / 240.0);
     float id = hash(cell);
     if (id < 0.4) {
         vec2 spot = (cell + 0.5) * 240.0 + (vec2(hash(cell + 3.1), hash(cell + 7.7)) - 0.5) * 130.0;
         float k = floor(40.0 + 50.0 * hash(cell + 1.3));  // whole cycles per hour, so 40 to 90 s each
         float ph = TAU * hash(cell + 5.9);
         spot += 38.0 * vec2(sin(turn * k + ph), cos(turn * (k + 13.0) + ph * 1.7));
-        float d = length(px - spot);
+        float d = length(front - spot);
         float glow = exp(-d * d / 4.5) + 0.25 * exp(-d * d / 40.0);
         a += glow * (0.5 + 0.5 * sin(turn * (k * 3.0 + 7.0) + ph * 2.3)) * moteStrength;
     }

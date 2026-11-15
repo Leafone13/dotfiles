@@ -25,6 +25,7 @@ Item {
   property real owlStrength: 0.003 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
   property real swayStrength: 0.003 // radians the bough turns in a gust, if the wallpaper has one: 1 px at a twig's tip
+  property real parallax: 5        // mask pixels between the far sky and the nearest ground as the viewer shifts their weight, 0 = off
   property real blinkEvery: 7      // seconds between chances to blink; it takes about half of them
   property int fps: 20
   // to see where each effect lives: echo "4 6" > ~/.local/state/logos-breath-demo makes everything
@@ -132,13 +133,13 @@ Item {
       }
       Image { id: lifeImage; visible: false; source: root.maskUrl.replace(".mask.png", ".life.png") }
       Image { id: petalImage; visible: false; source: root.maskUrl.replace(".mask.png", ".petals.png") }
+      Image { id: depthImage; visible: false; source: root.maskUrl.replace(".mask.png", ".depth.png") }
       Image { id: swayImage; visible: false; source: root.maskUrl.replace(".mask.png", ".sway.png") }
       Image {
         id: artImage
         visible: false
         source: root.masked ? "file://" + root.wallpaper : ""
-        // decoded at the size this screen shows, as the stock wallpaper is
-        sourceSize: Qt.size(Math.ceil(parent.width * screen.devicePixelRatio), Math.ceil(parent.height * screen.devicePixelRatio))
+        // in full size, not the screen's: drifting by part of a pixel then blurs fine detail far less
       }
       ShaderEffect {
         id: light
@@ -155,6 +156,9 @@ Item {
         property real creatureRipple: alive ? root.creatureRipple : 1
         property var petals: petalImage
         property var sway: swayImage
+        property var depth: depthImage
+        // not scaled by the demo strength: six times this bends the picture at the trunk's edge
+        property real parallax: depthImage.status === Image.Ready ? root.parallax : 0
         property real swayStrength: swayImage.status === Image.Ready ? root.swayStrength * root.demo : 0
         property real petalStrength: petalImage.status === Image.Ready ? Math.min(1, root.petalStrength * root.demo) : 0
         visible: artImage.status === Image.Ready
