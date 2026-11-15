@@ -18,6 +18,7 @@ Item {
   property real waveStrength: 0.35
   property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
+  property real rippleLarge: 0.2    // the share of it a large bright thing takes (the moon): in full it outshone the emblem
   property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
@@ -159,6 +160,7 @@ Item {
         visible: artImage.status === Image.Ready
         property real breathPhase: root.breathPhase
         property real haloLag: root.haloLag
+        property real rippleLarge: root.rippleLarge
         property real strength: root.strength * root.demo
         property real wave: root.wave
         property real waveStrength: root.waveStrength * root.demo

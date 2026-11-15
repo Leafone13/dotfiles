@@ -21,6 +21,7 @@ layout(std140, binding = 0) uniform buf {
     float rippleStrength; // how much brighter the painting's own lights get as the wave passes them
     float swayStrength;  // radians a bough turns at the height of a gust, 0 when the wallpaper has none
     float creatureRipple; // the share of the ripple the creature takes, 1 when the wallpaper has none
+    float rippleLarge;   // the share of the ripple a large bright thing takes, the moon first of all
     float haloLag;       // how far behind the lines the faintest halo breathes, as a share of a breath
 };
 layout(binding = 1) uniform sampler2D mask;  // R emblem + halo, G distance from the trunk's foot, B sky that may flow
@@ -91,8 +92,16 @@ void main() {
     // the ripple: the light that climbed the tree travels on past the crown, and whatever the painting
     // already lit (owl, leaves, flowers, at last the moon) answers in its own colour, later the farther
     // it is from the foot. Not the emblem (the wave has it), not the corners beyond the mask's reach.
-    float lit = smoothstep(0.45, 0.85, dot(c, vec3(0.299, 0.587, 0.114))) * (1.0 - smoothstep(0.02, 0.25, m.r))
+    // A large bright thing answers fainter: lit in full, the moon was louder than the emblem itself.
+    // Large = bright on most sides, 45 px away in eight directions (the moon to its very rim); a flower or a leaf is not.
+    // (Distance cannot tell them apart: the moon is as far from the foot as the far flowers.)
+    const vec3 LUM = vec3(0.299, 0.587, 0.114);
+    float around = 0.0;
+    for (int k = 0; k < 8; k++)
+        around += dot(texture(art, qt_TexCoord0 + 45.0 * vec2(cos(0.7854 * float(k)), sin(0.7854 * float(k))) / vec2(1920.0, 1080.0)).rgb, LUM);
+    float lit = smoothstep(0.45, 0.85, dot(c, LUM)) * (1.0 - smoothstep(0.02, 0.25, m.r))
                 * (1.0 - smoothstep(0.93, 1.0, m.g))
+                * mix(1.0, rippleLarge, smoothstep(0.25, 0.5, around / 8.0))
                 // the creature is the largest bright thing near the tree: lit in full it flares
                 * mix(1.0, creatureRipple, smoothstep(0.0, 0.03, length(l.rg - 127.0 / 255.0)));
     float lift = lit * smoothstep(0.12, 0.0, abs(m.g - wave * 0.62))
