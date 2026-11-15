@@ -18,10 +18,11 @@
 #   sway, in mask pixels: one or more "pivot-x pivot-y  centre-x centre-y rx ry  gain": what lies in the
 #     ellipse turns around the pivot (where it hangs from the limb, never on the trunk), fading out at
 #     the rim; gain makes a short cluster swing as far as a long twig. Must sit inside a still zone.
+# Each petal's circle reaches 35 px past it: flowing sky nearer than its own travel shows the petal twice.
 # The whole of 0-moonlight.png (still: tree + owl + hill, moon, each painted petal; the owl; three petals;
 # the leaf cluster and the twig of the bough on the left):
 #   ./mask.sh ~/.config/omarchy/backgrounds/elune/0-moonlight.png 1293 666 484 \
-#     "polygon 0,0 840,0 840,140 460,260 300,410 450,500 450,730 670,865 1010,1080 0,1080 circle 1600,95 1600,205 circle 418,285 418,330 circle 224,346 224,400 circle 159,496 159,540 circle 580,636 580,680 circle 1764,245 1764,325 circle 1661,437 1661,500 circle 1738,686 1738,765 circle 1524,804 1524,865 circle 1339,850 1339,915" \
+#     "polygon 0,0 840,0 840,140 460,260 300,410 450,500 450,730 670,865 1010,1080 0,1080 circle 1600,95 1600,205 circle 418,285 418,365 circle 224,346 224,436 circle 159,496 159,576 circle 580,636 580,716 circle 1764,245 1764,360 circle 1661,437 1661,535 circle 1738,686 1738,800 circle 1524,804 1524,900 circle 1339,850 1339,950" \
 #     "367 697  335 590 105 140  397.5 520.6 7" \
 #     "2353,326,230 2214,582,170 1786,1133,150" \
 #     "440 72  455 150 105 90  2   520 62  700 55 205 85  1"
