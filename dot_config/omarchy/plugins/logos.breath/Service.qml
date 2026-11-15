@@ -19,7 +19,7 @@ Item {
   property real mistStrength: 10   // mask pixels the sky travels in 45 s
   property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
   property real moteStrength: 0.3  // any strength at 0 switches that effect off
-  property real moteDepth: 1       // the far (small, slow) and near (large, soft) motes beside the middle plane; 0 = one plane
+  property real moteDepth: 0       // the far (small, slow) and near (large, soft) motes beside the middle plane; 0 = one plane
   property real owlPeriod: 4.5     // seconds per breath of the creature, if the wallpaper has one
   property real owlStrength: 0.006 // how far its body swells, as a share of its distance from its feet
   property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
