@@ -12,24 +12,25 @@ Item {
   id: root
   property var shell: null
   property real period: 6.5    // seconds per breath
-  property real strength: 0.1  // peak opacity of the breath
+  property real strength: 0.6  // peak opacity of the breath
   property real haloLag: 0.25  // the halo follows the lines this share of a breath later (1.6 s), 0 = all at once
   property real waveEvery: 4       // breaths between two lights climbing the tree
-  property real waveStrength: 0.35
-  property real rippleStrength: 0.15 // how much brighter the scene's own lights get as that light passes on to the moon
-  property real mistStrength: 10   // mask pixels the sky travels in 45 s
+  property real waveStrength: 2.1
+  property real rippleStrength: 0.9 // how much brighter the scene's own lights get as that light passes on to the moon
+  property real mistStrength: 60   // mask pixels the sky travels in 45 s
   property real rippleLarge: 0.2    // the share of it a large bright thing takes (the moon): in full it outshone the emblem
   property real creatureRipple: 0.25 // the share of that the creature takes: in full the owl flares
-  property real moteStrength: 0.3  // any strength at 0 switches that effect off
+  property real moteStrength: 1.8  // any strength at 0 switches that effect off
   property real owlPeriod: period  // the creature, if the wallpaper has one: it breathes with the tree
-  property real owlStrength: 0.003 // how far its body swells, as a share of its distance from its feet
-  property real petalStrength: 0.45 // peak opacity of the falling petals, if the wallpaper has any
-  property real swayStrength: 0.003 // radians the bough turns in a gust, if the wallpaper has one: 1 px at a twig's tip
+  property real owlStrength: 0.018 // how far its body swells, as a share of its distance from its feet
+  property real petalStrength: 1 // peak opacity of the falling petals, if the wallpaper has any
+  property real swayStrength: 0.018 // radians the bough turns in a gust, if the wallpaper has one: 6 px at a twig's tip
   property real parallax: 5        // mask pixels between the far sky and the nearest ground as the viewer shifts their weight, 0 = off
   property real blinkEvery: 7      // seconds between chances to blink; it takes about half of them
   property int fps: 20
-  // to see where each effect lives: echo "4 6" > ~/.local/state/logos-breath-demo makes everything
-  // 4 times stronger and 6 times faster, at once; echo "1 1" goes back
+  // to see where each effect lives: echo "2 6" > ~/.local/state/logos-breath-demo makes everything
+  // twice as strong and 6 times faster, at once; echo "1 1" goes back. The strengths above
+  // already hold six times the first calm set (the demo "6 1", kept)
   readonly property var demoWords: demoFile.text().trim().split(/\s+/)
   readonly property real demo: parseFloat(demoWords[0]) || 1
   readonly property real demoSpeed: parseFloat(demoWords[1]) || 1
