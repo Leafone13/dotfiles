@@ -11,6 +11,7 @@ var STALE_SECONDS = 20 * 60
 function str(value) { return typeof value === "string" ? value.slice(0, MAX_TEXT) : "" }
 function num(value) { value = Number(value); return isFinite(value) ? Math.floor(value) : 0 }
 function obj(value) { return value && typeof value === "object" ? value : {} }
+function day(value) { return typeof value === "string" && /^\d{4}-\d\d-\d\d$/.test(value) ? value : "" }
 function list(value, each, max) {
   return Array.isArray(value) ? value.slice(0, max || MAX_ITEMS).map(function(item) { return each(obj(item)) }) : []
 }
@@ -71,7 +72,9 @@ function parse(text) {
     calendar: {
       error: str(calendar.error),
       next: calendar.next && typeof calendar.next === "object"
-        ? { start: str(calendar.next.start), end: str(calendar.next.end), title: str(calendar.next.title) } : null
+        ? { start: str(calendar.next.start), end: str(calendar.next.end), title: str(calendar.next.title) } : null,
+      off: list(calendar.off, function(item) { return { from: day(item.from), to: day(item.to) } })
+        .filter(function(range) { return range.from && range.to })
     },
     kit: { error: str(kit.error), stale: kit.stale === true, recovery: num(kit.recovery), personal: num(kit.personal) }
   }
@@ -87,6 +90,13 @@ function attention(model) {
 }
 
 function stale(model, nowSeconds) { return !model || nowSeconds - model.generated > STALE_SECONDS }
+
+// One day-off range as text: "Wed 18 – Thu 19 Nov", "Mon 30 Nov – Mon 7 Dec"; format(date, pattern) is the caller's locale.
+function offText(range, format) {
+  var a = localDate(range.from + "T00:00"), b = localDate(range.to + "T00:00")
+  if (range.from === range.to) return format(a, "ddd d MMM")
+  return format(a, a.getMonth() === b.getMonth() ? "ddd d" : "ddd d MMM") + " – " + format(b, "ddd d MMM")
+}
 
 // "2026-11-13T14:00" as local time, built by parts: Date's own parsing of a
 // zoneless string differs between engines. null when it isn't one.

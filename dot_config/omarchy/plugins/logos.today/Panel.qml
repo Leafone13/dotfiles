@@ -25,6 +25,7 @@ Panel {
   readonly property bool stale: Model.stale(model, now)
   readonly property int attention: Model.attention(model)
   readonly property var next: model ? model.calendar.next : null
+  readonly property var off: model ? model.calendar.off : []
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -312,6 +313,18 @@ Panel {
             visible: !!root.model && root.model.calendar.error === "" && !root.next
             dim: true
             text: strings.t("meeting.none")
+          }
+
+          // ---------- 4b. Days off (Outlook "out of office", next 30 days) ----------
+          PanelSeparator { visible: root.off.length > 0; foreground: root.bar.foreground }
+          Header { visible: root.off.length > 0; text: strings.t("off") }
+          Repeater {
+            model: root.off
+            Label {
+              required property var modelData
+              text: Model.offText(modelData, function(date, pattern) {
+                return date.toLocaleString(Qt.locale(Commons.I18n.formatLocale), pattern) })
+            }
           }
 
           // ---------- 5. Backup age ----------

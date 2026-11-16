@@ -18,7 +18,8 @@
   "plane.hidden.open": "Hidden: %1 (hide)",
   "plane.skipped": "Needs the VPN: last known list",
   "meeting": "Next meeting",
-  "meeting.none": "Nothing in the next 7 days",
+  "meeting.none": "Nothing in the next 30 days",
+  "off": "Days off",
   "kit": "Backup kits",
   "kit.ages": "Work: %1 d · personal: %2 d"
 }

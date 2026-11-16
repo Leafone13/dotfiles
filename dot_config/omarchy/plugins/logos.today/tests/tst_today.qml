@@ -148,6 +148,15 @@ TestCase {
     compare(Model.parse('{"reminders":{"items":[null,"x",3]}}').reminders.items.length, 3)
   }
 
+  function test_days_off() {
+    compare(model.calendar.off.length, 3)  // the "<b>" range is dropped
+    function f(date, pattern) { return Qt.formatDate(date, pattern) }
+    var texts = model.calendar.off.map(function(range) { return Model.offText(range, f) })
+    compare(texts[0], Qt.formatDate(new Date(2026, 0, 7), "ddd d") + " – " + Qt.formatDate(new Date(2026, 0, 8), "ddd d MMM"))
+    verify(texts[1].indexOf("MMM") < 0 && texts[1].split(" – ").length === 2)  // across months: both sides name the month
+    compare(texts[2], Qt.formatDate(new Date(2026, 1, 10), "ddd d MMM"))
+  }
+
   function test_local_date() {
     var d = Model.localDate("2026-01-02T14:05")
     compare([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()], [2026, 0, 2, 14, 5])
