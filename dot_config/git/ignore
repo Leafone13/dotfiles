@@ -1,0 +1,6 @@
+# Files AI agents write with remembered approvals or local notes; they can hold typed secrets.
+.claude/settings.local.json
+CLAUDE.local.md
+.codex/
+.cursor/
+.gemini/
