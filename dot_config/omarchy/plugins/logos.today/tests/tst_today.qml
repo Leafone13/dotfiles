@@ -113,6 +113,14 @@ TestCase {
     compare(Model.attention(Model.parse(JSON.stringify(data))), Model.attention(model) - 3)
   }
 
+  function test_kit_strings() {  // the panel builds these keys as "kit." + "recovery" / "personal"
+    var request = new XMLHttpRequest()
+    request.open("GET", Qt.resolvedUrl("../i18n/en.json"), false)
+    request.send()
+    var strings = JSON.parse(request.responseText)
+    verify(strings["kit.recovery"].indexOf("%1") >= 0 && strings["kit.personal"].indexOf("%1") >= 0 && !!strings["kit.remake"])
+  }
+
   function test_stems() {
     compare(model.reminders.items.map(function(i) { return i.stem }), ["", "remind-water-plants", ""])
     compare(model.reminders.timers[0].stem, "")

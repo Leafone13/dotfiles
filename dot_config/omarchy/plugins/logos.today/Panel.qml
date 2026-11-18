@@ -339,8 +339,8 @@ Panel {
             model: root.model && root.model.kit.error === "" ? ["recovery", "personal"] : []
             Entry {
               required property string modelData
-              titleColor: root.model.kit.staleKits.indexOf(modelData) >= 0 ? root.bar.urgent : root.bar.foreground
-              title: strings.t("kit." + modelData).arg(Commons.I18n.formatNumber(root.model.kit[modelData]))
+              titleColor: root.model && root.model.kit.staleKits.indexOf(modelData) >= 0 ? root.bar.urgent : root.bar.foreground
+              title: strings.t("kit." + modelData).arg(Commons.I18n.formatNumber(root.model ? root.model.kit[modelData] : 0))
               side: strings.t("kit.remake")
               ask: modelData === "recovery" ? "kit work" : "kit personal"
             }
