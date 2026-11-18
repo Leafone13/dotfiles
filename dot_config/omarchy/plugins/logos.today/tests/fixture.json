@@ -48,5 +48,7 @@
     "next": {"start": "2026-01-02T14:00", "end": "2026-01-02T15:00", "title": "<h1>Example meeting</h1> @ <img src=https://example.invalid/room>"},
     "off": [{"from": "2026-01-07", "to": "2026-01-08"}, {"from": "<b>", "to": "2026-01-09"}, {"from": "2026-01-30", "to": "2026-02-02"}, {"from": "2026-02-10", "to": "2026-02-10"}]
   },
-  "kit": {"at": 1794567600, "error": "", "recovery": 9, "personal": 3, "stale": true, "staleKits": ["recovery", "<b>"]}
+  "kit": {"at": 1794567600, "error": "", "recovery": 9, "personal": 3, "stale": true, "staleKits": ["recovery", "<b>"],
+    "made": {"recovery": "2026-01-02", "personal": "<b>"},
+    "last": {"recovery": {"at": 1794567000, "ok": true, "step": "<b>", "copied": 2, "of": 3}, "personal": "<img src=https://example.invalid/k>"}}
 }

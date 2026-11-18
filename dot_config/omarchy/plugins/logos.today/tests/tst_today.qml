@@ -119,6 +119,23 @@ TestCase {
     request.send()
     var strings = JSON.parse(request.responseText)
     verify(strings["kit.recovery"].indexOf("%1") >= 0 && strings["kit.personal"].indexOf("%1") >= 0 && !!strings["kit.remake"])
+    function t(key) { verify(!!strings[key]); return strings[key] }
+    compare(Model.kitRunText(model.kit.last.recovery, t), "Last run: copied to 2 of 3")
+    compare(Model.kitRunText({ ok: false, step: "push", copied: 0, of: 3 }, t), "Last run failed (copied to 0 of 3)")
+    compare(Model.kitRunText({ ok: false, step: "verify", copied: 0, of: 3 }, t), strings["kit.run.early"])
+    compare(Model.kitRunText(null, t), "")
+  }
+
+  function test_kit_made_and_last_run() {
+    compare(model.kit.made, { recovery: "2026-01-02", personal: "" })  // not a day = no date
+    compare(model.kit.last, { recovery: { ok: true, step: "", copied: 2, of: 3 }, personal: null })  // unknown step dropped
+    compare(Model.kitRun({ ok: "yes", step: "make", copied: 0, of: 3 }), { ok: false, step: "make", copied: 0, of: 3 })
+    verify(Model.kitRun({ ok: true, copied: 4, of: 3 }) === null && Model.kitRun({ ok: true, copied: 1 }) === null && Model.kitRun([]) === null)
+    var old = JSON.parse(readFixture())  // a cache file from before these fields
+    delete old.kit.made; delete old.kit.last
+    old = Model.parse(JSON.stringify(old)).kit
+    compare(old.made, { recovery: "", personal: "" })
+    compare(old.last, { recovery: null, personal: null })
   }
 
   function test_stems() {
@@ -151,6 +168,7 @@ TestCase {
     compare(big.calendar.next, null)
     compare(big.kit.stale, false)
     compare(big.kit.staleKits, [])
+    compare(big.kit.last.recovery, null)
     compare(model.kit.staleKits, ["recovery"])  // unknown names from the cache file are dropped
     compare(Model.parse("<html>"), null)
     compare(Model.parse("[1]"), null)

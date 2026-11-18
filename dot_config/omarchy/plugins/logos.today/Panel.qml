@@ -40,6 +40,12 @@ Panel {
     return start.toLocaleString(Qt.locale(Commons.I18n.formatLocale), "ddd d MMM HH:mm") + " - " + next.end.slice(11, 16)
   }
 
+  // " · Mon 16 Nov" after a kit's age, nothing when the collector found no kit.
+  function kitMade(day) {
+    var made = Model.localDate(day + "T00:00")
+    return made ? " · " + made.toLocaleString(Qt.locale(Commons.I18n.formatLocale), "ddd d MMM") : ""
+  }
+
   // Fixed command, the address as one quoted argument, and only the two link shapes.
   function openUrl(url) {
     if (!(Model.isAdoUrl(url) || Model.isTicketUrl(url)) || !root.bar) return
@@ -334,14 +340,18 @@ Panel {
           Problem { text: root.model ? root.model.kit.error : "" }
 
           // Each row remakes its kit in a floating terminal, at any time; it
-          // turns red once that kit is due (the collector's weekly rule).
+          // turns red once that kit is due (the collector's weekly rule). The
+          // second line is how the last remake ended.
           Repeater {
             model: root.model && root.model.kit.error === "" ? ["recovery", "personal"] : []
             Entry {
               required property string modelData
               titleColor: root.model && root.model.kit.staleKits.indexOf(modelData) >= 0 ? root.bar.urgent : root.bar.foreground
               title: strings.t("kit." + modelData).arg(Commons.I18n.formatNumber(root.model ? root.model.kit[modelData] : 0))
+                + (root.model ? root.kitMade(root.model.kit.made[modelData]) : "")
+              detail: root.model ? Model.kitRunText(root.model.kit.last[modelData], function(key) { return strings.t(key) }) : ""
               side: strings.t("kit.remake")
+              button: true
               ask: modelData === "recovery" ? "kit work" : "kit personal"
             }
           }
@@ -373,6 +383,7 @@ Panel {
 
   // Title with an optional right-hand note and a second, dimmer line; a row
   // with a url opens it on click, one with an ask word asks for a walk-through.
+  // With button set, the note is drawn as a pill that fills while the row is hovered.
   component Entry: Item {
     id: entry
     property string title: ""
@@ -381,6 +392,8 @@ Panel {
     property string url: ""
     property string ask: ""
     property string stem: ""
+    property bool button: false
+    readonly property real pad: button ? Style.space(8) : 0
     property color titleColor: root.bar.foreground
 
     width: parent ? parent.width : 0
@@ -405,15 +418,29 @@ Panel {
 
         Label {
           id: titleText
-          width: parent.width - (sideText.text !== "" ? sideText.width + Style.space(10) : 0)
+          width: parent.width - (sideText.text !== "" ? sideText.width + 2 * entry.pad + Style.space(10) : 0)
           text: entry.title
           color: entry.titleColor
+        }
+
+        Rectangle {
+          visible: entry.button && sideText.text !== ""
+          anchors.fill: sideText
+          anchors.leftMargin: -entry.pad
+          anchors.rightMargin: -entry.pad
+          anchors.topMargin: -Style.space(1)
+          anchors.bottomMargin: -Style.space(1)
+          radius: height / 2
+          color: Qt.rgba(border.color.r, border.color.g, border.color.b, hover.containsMouse ? 0.2 : 0)
+          border.width: 1
+          border.color: Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.6)
         }
 
         Label {
           id: sideText
           anchors.right: parent.right
-          dim: true
+          anchors.rightMargin: entry.pad
+          dim: !(entry.button && hover.containsMouse)
           text: entry.side
         }
       }

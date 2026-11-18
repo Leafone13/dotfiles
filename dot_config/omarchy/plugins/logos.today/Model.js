@@ -77,8 +77,26 @@ function parse(text) {
         .filter(function(range) { return range.from && range.to })
     },
     kit: { error: str(kit.error), stale: kit.stale === true, recovery: num(kit.recovery), personal: num(kit.personal),
+      made: { recovery: day(obj(kit.made).recovery), personal: day(obj(kit.made).personal) },
+      last: { recovery: kitRun(obj(kit.last).recovery), personal: kitRun(obj(kit.last).personal) },
       staleKits: Array.isArray(kit.staleKits) ? kit.staleKits.filter(function(k) { return k === "recovery" || k === "personal" }) : [] }
   }
+}
+
+// The last remake of one kit as the collector read it, null when there is none or it isn't one:
+// ok, the step that failed (it picks a string, so only the known words), copied to how many of how many places.
+function kitRun(item) {
+  if (!item || typeof item !== "object") return null
+  var copied = num(item.copied), of = num(item.of)
+  if (of < 1 || of > 9 || copied < 0 || copied > of) return null
+  return { ok: item.ok === true, step: ["make", "verify", "push"].indexOf(item.step) >= 0 ? item.step : "", copied: copied, of: of }
+}
+
+// That run as the row's second line; t(key) is the caller's translation.
+function kitRunText(run, t) {
+  if (!run) return ""
+  if (!run.ok && run.step !== "push") return t("kit.run.early")
+  return t(run.ok ? "kit.run" : "kit.run.failed").arg(run.copied).arg(run.of)
 }
 
 // What the badge counts: due reminders, reviews and approvals waiting, open tickets (the collector has
