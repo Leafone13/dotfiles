@@ -8,7 +8,6 @@ install
 {{- if not .omarchy }}
 # Omarchy host only: desktop, input, keybindings
 .config/hypr
-.config/voxtype
 .config/fcitx5
 .config/systemd
 .config/environment.d

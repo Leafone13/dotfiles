@@ -44,15 +44,9 @@
    chmod 600 ~/.ssh/id_ed25519_* ~/.ssh/config.d/yaya
    ```
 
-4. Диктовка (voxtype) — ставит Omarchy, у меня только свой конфиг (модель `small`, язык auto):
+4. Перелогиниться (группа docker и ssh-agent подхватятся в новой сессии).
 
-   ```bash
-   omarchy install dictation voxtype   # оставляет мой config.toml из chezmoi и сама скачивает модель
-   ```
-
-5. Перелогиниться (группа docker и ssh-agent подхватятся в новой сессии).
-
-6. Проверить:
+5. Проверить:
 
    ```bash
    chezmoi verify && echo OK       # всё на диске совпадает с репозиторием

@@ -28,14 +28,6 @@ else
   sudo usermod -aG docker "$USER" && warn "added to docker group: log out and back in"
 fi
 
-step "voxtype (dictation)"
-# Omarchy installs it (package, service, GPU); dotfiles only keep my config.toml.
-if command -v voxtype >/dev/null; then
-  echo "   installed; after changing the model in config.toml: voxtype setup --download"
-else
-  warn "not installed: run 'omarchy install dictation voxtype' (keeps my config.toml, downloads the model)"
-fi
-
 step "Hyprland plugin hyprexpo (hyprpm)"
 if [[ -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   warn "Hyprland not running: re-run 'chezmoi apply' from a Hyprland session"
