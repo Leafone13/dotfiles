@@ -8,7 +8,7 @@ step() { printf '\n==> %s\n' "$*"; }
 warn() { printf '   ! %s\n' "$*" >&2; }
 
 step "Packages beyond Omarchy"
-omarchy pkg add age sops tree cmake meson slack-desktop || warn "pacman packages failed"
+omarchy pkg add age sops tree cmake meson hyprpm slack-desktop || warn "pacman packages failed"
 {{- if .work }}
 
 step "Work packages (YaYa)"
