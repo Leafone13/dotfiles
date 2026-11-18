@@ -44,6 +44,16 @@ else
     && hyprpm enable hyprexpo && hyprpm reload -n || warn "hyprexpo install failed"
 fi
 
+step "Glass look (logos.glass: glass.lua loaded, frosted on a new machine)"
+# hyprland.lua is Omarchy's file and not in chezmoi, so the line that loads glass.lua is added here.
+if grep -qF 'require("hypr.glass")' ~/.config/hypr/hyprland.lua; then
+  echo "   already loaded"
+elif echo 'require("hypr.glass")' >>~/.config/hypr/hyprland.lua && [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  omarchy hyprland window transparency glassy && omarchy bar background glassy || warn "frosted look not set: press the glass button in the bar"
+else
+  warn "Hyprland not running: press the glass button in the bar after login"
+fi
+
 step "DevPod (docker provider, SSH entries in config.d, dotfiles)"
 devpod() { mise exec -- devpod "$@"; }
 devpod provider list --output json 2>/dev/null | jq -e 'has("docker")' >/dev/null || devpod provider add docker

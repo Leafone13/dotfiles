@@ -1,0 +1,7 @@
+#!/bin/bash
+# Elune always comes up with its main wallpaper. Without this a theme set while Elune is already on
+# (anything that re-applies the theme does one) moves to the next picture in the folder.
+# Another picture stays a choice for the moment: `omarchy theme bg next` runs no hook.
+main="$HOME/.config/omarchy/backgrounds/elune/0-moonlight.png"
+[[ ${1:-} == elune && -f $main ]] || exit 0
+[[ $(readlink "$HOME/.local/state/omarchy/current/background") == "$main" ]] || omarchy theme bg set "$main"

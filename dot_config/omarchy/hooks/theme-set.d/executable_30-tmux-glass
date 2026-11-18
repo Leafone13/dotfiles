@@ -1,0 +1,11 @@
+#!/bin/bash
+# Omarchy's theme set paints every tmux pane with the theme background (window-style, plus an
+# OSC 11 into each pane). A painted cell is solid in foot, so a see-through terminal (logos.glass:
+# frosted) turns opaque inside tmux, and the glass button cannot bring it back. Take the paint off:
+# the default background is the same colour and keeps foot's transparency.
+tmux list-sessions >/dev/null 2>&1 || exit 0
+tmux set -gu window-style \; set -gu window-active-style
+for tty in $(tmux list-panes -a -F '#{pane_tty}' | sort -u); do
+  printf '\033]111\007' >"$tty" 2>/dev/null
+done
+exit 0
