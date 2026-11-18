@@ -47,9 +47,7 @@
 4. Диктовка (voxtype) — ставит Omarchy, у меня только свой конфиг (модель `small`, язык auto):
 
    ```bash
-   omarchy voxtype install
-   chezmoi apply                   # вернёт мой config.toml поверх стандартного
-   voxtype setup --download        # скачает модель из моего конфига
+   omarchy install dictation voxtype   # оставляет мой config.toml из chezmoi и сама скачивает модель
    ```
 
 5. Перелогиниться (группа docker и ssh-agent подхватятся в новой сессии).

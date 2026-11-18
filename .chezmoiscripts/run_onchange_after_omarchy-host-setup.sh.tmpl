@@ -12,6 +12,8 @@ omarchy pkg add age sops tree cmake meson hyprpm slack-desktop || warn "pacman p
 {{- if .work }}
 
 step "Work packages (YaYa)"
+omarchy pkg add azure-cli || warn "azure-cli failed"
+echo "   AUR builds next (anydesk, balena-cli): several quiet minutes"
 omarchy pkg aur add anydesk-bin balena-cli-bin || warn "AUR packages failed (AUR down?)"
 {{- end }}
 
@@ -31,14 +33,17 @@ step "voxtype (dictation)"
 if command -v voxtype >/dev/null; then
   echo "   installed; after changing the model in config.toml: voxtype setup --download"
 else
-  warn "not installed: run 'omarchy voxtype install', then 'chezmoi apply' (restores my config.toml), then 'voxtype setup --download'"
+  warn "not installed: run 'omarchy install dictation voxtype' (keeps my config.toml, downloads the model)"
 fi
 
 step "Hyprland plugin hyprexpo (hyprpm)"
 if [[ -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   warn "Hyprland not running: re-run 'chezmoi apply' from a Hyprland session"
-elif hyprpm list 2>/dev/null | grep -q hyprexpo; then
+elif hyprpm list 2>/dev/null | grep -A1 'Plugin hyprexpo' | grep -q 'enabled:.*true'; then
   echo "   already installed"
+elif hyprpm list 2>/dev/null | grep -q hyprexpo; then   # built but not enabled: "listed" is not "works"
+  hyprpm enable hyprexpo && hyprpm reload -n \
+    || warn "hyprexpo is built but not enabled: run 'hyprpm enable hyprexpo && hyprpm reload -n' in your terminal (asks sudo)"
 else
   hyprpm update && yes | hyprpm add https://github.com/sandwichfarm/hyprexpo \
     && hyprpm enable hyprexpo && hyprpm reload -n || warn "hyprexpo install failed"
