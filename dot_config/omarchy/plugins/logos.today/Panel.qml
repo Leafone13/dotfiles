@@ -48,10 +48,11 @@ Panel {
   }
 
   // Opens a terminal where the assistant walks through one item or all of
-  // them. The prompt is built by the command; from here only a fixed word or
-  // "reminder" with a checked file stem goes out.
+  // them, or where one backup kit is remade. The prompt is built by the
+  // command; from here only fixed words or "reminder" with a checked file
+  // stem go out.
   function ask(what, stem) {
-    var args = what === "kit" || what === "all" ? what
+    var args = ["all", "kit work", "kit personal"].indexOf(what) >= 0 ? what
       : what === "reminder" && Model.isStem(stem) ? "reminder " + Util.shellQuote(stem) : ""
     if (!root.bar || args === "") return
     root.bar.run(root.asker + " " + args)
@@ -332,14 +333,17 @@ Panel {
           Header { text: strings.t("kit") }
           Problem { text: root.model ? root.model.kit.error : "" }
 
-          // A stale kit is remade with the assistant: the row opens it.
-          Entry {
-            visible: !!root.model && root.model.kit.error === ""
-            titleColor: root.model && root.model.kit.stale ? root.bar.urgent : root.bar.foreground
-            ask: root.model && root.model.kit.stale ? "kit" : ""
-            title: root.model ? strings.t("kit.ages")
-              .arg(Commons.I18n.formatNumber(root.model.kit.recovery))
-              .arg(Commons.I18n.formatNumber(root.model.kit.personal)) : ""
+          // Each row remakes its kit in a floating terminal, at any time; it
+          // turns red once that kit is due (the collector's weekly rule).
+          Repeater {
+            model: root.model && root.model.kit.error === "" ? ["recovery", "personal"] : []
+            Entry {
+              required property string modelData
+              titleColor: root.model.kit.staleKits.indexOf(modelData) >= 0 ? root.bar.urgent : root.bar.foreground
+              title: strings.t("kit." + modelData).arg(Commons.I18n.formatNumber(root.model.kit[modelData]))
+              side: strings.t("kit.remake")
+              ask: modelData === "recovery" ? "kit work" : "kit personal"
+            }
           }
         }
       }

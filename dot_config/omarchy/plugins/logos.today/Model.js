@@ -76,7 +76,8 @@ function parse(text) {
       off: list(calendar.off, function(item) { return { from: day(item.from), to: day(item.to) } })
         .filter(function(range) { return range.from && range.to })
     },
-    kit: { error: str(kit.error), stale: kit.stale === true, recovery: num(kit.recovery), personal: num(kit.personal) }
+    kit: { error: str(kit.error), stale: kit.stale === true, recovery: num(kit.recovery), personal: num(kit.personal),
+      staleKits: Array.isArray(kit.staleKits) ? kit.staleKits.filter(function(k) { return k === "recovery" || k === "personal" }) : [] }
   }
 }
 

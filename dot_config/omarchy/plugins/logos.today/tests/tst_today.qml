@@ -142,6 +142,8 @@ TestCase {
     compare(big.plane, { error: "", skipped: false, items: [], more: 0, hidden: 0, hiddenItems: [] })  // a cache file from before the tickets section
     compare(big.calendar.next, null)
     compare(big.kit.stale, false)
+    compare(big.kit.staleKits, [])
+    compare(model.kit.staleKits, ["recovery"])  // unknown names from the cache file are dropped
     compare(Model.parse("<html>"), null)
     compare(Model.parse("[1]"), null)
     compare(Model.parse(""), null)

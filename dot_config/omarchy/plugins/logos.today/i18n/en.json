@@ -21,5 +21,7 @@
   "meeting.none": "Nothing in the next 30 days",
   "off": "Days off",
   "kit": "Backup kits",
-  "kit.ages": "Work: %1 d · personal: %2 d"
+  "kit.recovery": "Work: %1 d",
+  "kit.personal": "Personal: %1 d",
+  "kit.remake": "remake"
 }
